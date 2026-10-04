@@ -58,3 +58,17 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
   - Copy fix: the scripted "attach" sentence says "screenshot of our conversation" only when the merchant tagged the upload as the exchange request, and otherwise "a screenshot from my phone", so the standard draft never claims more than the merchant said.
 - **How it was verified:** In the in-app browser at 1440×900 (light and dark) and at 390×844 and 360×740: lock → alert → back to Home; the quick-action toast; the Demo controls sheet opens with focus on Close, makes the phone inert, and Escape closes it and returns focus. Measured: `scrollWidth` equals viewport width at 360 and 390, the Demo controls pill is 40 px tall, and no element overflows the viewport.
 - **Real versus simulated:** Everything on screen is fictional data; the status bar is drawn.
+
+## M3 · Hold flow
+
+- **When / goal:** 5 Oct 2026. From the alert to a complete case file: Holds tab, Hold detail, Case file, and the "Add from your phone" sheet.
+- **What I asked:** Build screens 3–6 of the brief, with the staggered reveal and both the sample screenshots and a real upload with tagging.
+- **What Claude did:** Added the four screens and the sheet to `screens.js`; sheet state, the 1.5 s "reading" step, the file picker, object URLs and E5 handling to `app.js`; styles for the ledger, deadline banner, a navy "government file" cover with dashed form lines, evidence cards, the dashed amber missing card, and the sheet.
+- **Decisions and trade-offs:**
+  - The sample chat screenshot is drawn once in HTML/CSS with every size in container-query units (`cqw`), so the same markup is a 56 px thumbnail in the case file, a 111 px tile in the sheet and a large preview while "reading". It's a generic chat look, not a copy of any real app.
+  - Tagging a real upload adds it straight away (one tap, not pick-then-confirm), to keep the flow under two minutes.
+  - The cover's STATUS line says "Exchange dispute, not fraud" only when E5 is the chat or is tagged as the exchange request. For other tags it says "Ordered, paid and delivered", matching what the statement is allowed to claim.
+  - Uploaded images stay in the browser as object URLs; nothing is uploaded. URLs are revoked when replaced or discarded.
+  - The timer start is recorded the first time Hold detail opens (shown in M6).
+- **How it was verified:** In the in-app browser at 1440×900 (light) and 390×844 (dark): lock → Hold detail → Case file (stagger plays once) → sheet (focus moves to the sheet title, the screen behind is inert, rail shows step 4) → product-photo toast → chat "reading" → "What it shows" → Add → toast, 5 of 5 ready, focus on "Draft my statement". Real-upload path checked by injecting a generated PNG into the file input: the tag view showed the image, "Delivery proof" added E5 as a tagged upload. Two layout bugs found and fixed: flex children of the scrolling body were shrinking (squashing the file cover), and the blockquote kept browser-default margins.
+- **Real versus simulated:** The screenshot "reading" is simulated (a fixed result after 1.5 s); the brief puts reading uploads with AI out of scope. The real upload is genuinely picked and shown, but never read or sent.

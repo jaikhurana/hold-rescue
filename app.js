@@ -1,6 +1,6 @@
 // Hold Rescue · app state, navigation and demo controls.
 // State lives in memory only; a reload restarts the demo.
-import { SCREENS, TONE, NOT_IN_PROTOTYPE, stepOf } from './screens.js';
+import { SCREENS, TONE, NOT_IN_PROTOTYPE, TAG_LABELS, sheetBody, sheetFrame, stepOf } from './screens.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -15,7 +15,12 @@ const demoPill = $('.demo-pill');
 const initialState = () => ({
   screen: 'lock',
   stack: [], // back stack of screen names
-  sheet: null, // open bottom sheet inside the phone, if any
+  sheet: null, // evidence sheet: { view: 'pick'|'reading'|'read'|'tag', url? }
+  e5: null, // null | { kind: 'chat' } | { kind: 'tag', tag }. Only this shape is ever sent to the server.
+  upload: null, // { url } for a real image the merchant picked; stays in the browser as an object URL
+  caseRevealed: false, // the case file staggers in only the first time
+  justAdded: false, // animate the E5 card once after it is added
+  timer: { start: null, end: null },
   submitted: false,
   stage: 0, // 0 submitted · 1 filed · 2 call booked · 3 released
 });
@@ -49,7 +54,14 @@ function show(name, how = 'fwd', { focus = true } = {}) {
   }
   viewport.append(el);
   if (focus) el.querySelector('h2[tabindex]')?.focus({ preventScroll: true });
+  afterShow(name);
   syncRail();
+}
+
+/** One-time effects when a screen appears. */
+function afterShow(name) {
+  if (name === 'hold' && !s.timer.start) s.timer.start = Date.now();
+  if (name === 'casefile') s.caseRevealed = true;
 }
 
 function go(name) {
@@ -94,6 +106,70 @@ function toast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
 }
+
+// ───────────── Evidence sheet ("Add from your phone") ─────────────
+
+const sheetRoot = $('#sheet-root');
+const fileInput = $('#file-input');
+let sheetReturnFocus = null;
+let readTimer = 0;
+
+function openSheet() {
+  sheetReturnFocus = document.activeElement;
+  s.sheet = { view: 'pick' };
+  sheetRoot.innerHTML = sheetFrame();
+  sheetRoot.classList.add('open');
+  currentScreen().inert = true;
+  setSheetView('pick');
+  $('#sheet-title').focus({ preventScroll: true });
+  syncRail();
+}
+
+function setSheetView(view, extra = {}) {
+  clearTimeout(readTimer);
+  s.sheet = { ...s.sheet, view, ...extra };
+  $('#sheet-body').innerHTML = sheetBody(s);
+  $('#sheet-body').scrollTop = 0;
+  if (view === 'reading') readTimer = setTimeout(() => setSheetView('read'), 1500);
+}
+
+function closeSheet({ restoreFocus = true } = {}) {
+  if (!s.sheet) return;
+  clearTimeout(readTimer);
+  if (s.sheet.url && s.sheet.url !== s.upload?.url) URL.revokeObjectURL(s.sheet.url);
+  s.sheet = null;
+  sheetRoot.classList.remove('open');
+  sheetRoot.innerHTML = '';
+  const screen = currentScreen();
+  if (screen) screen.inert = false;
+  if (restoreFocus && sheetReturnFocus?.isConnected) sheetReturnFocus.focus({ preventScroll: true });
+  syncRail();
+}
+
+/** Sets E5, clears any drafted statement (it no longer matches the case file) and returns to the file. */
+function addE5(e5, upload = null) {
+  if (s.upload && s.upload.url !== upload?.url) URL.revokeObjectURL(s.upload.url);
+  s.e5 = e5;
+  s.upload = upload;
+  s.justAdded = true;
+  closeSheet({ restoreFocus: false });
+  refresh();
+  s.justAdded = false;
+  currentScreen().querySelector('[data-action="go"]')?.focus({ preventScroll: true });
+  toast('Added to your case file');
+}
+
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files?.[0];
+  fileInput.value = '';
+  if (!file || !s.sheet) return;
+  if (!file.type.startsWith('image/')) {
+    toast('Pick an image, like a screenshot.');
+    return;
+  }
+  if (s.sheet.url && s.sheet.url !== s.upload?.url) URL.revokeObjectURL(s.sheet.url);
+  setSheetView('tag', { url: URL.createObjectURL(file) });
+});
 
 // ───────────── Presenter rail ─────────────
 
@@ -143,6 +219,22 @@ const actions = {
   'open-hold'() {
     go(s.submitted ? 'tracker' : 'hold');
   },
+  go: (name) => go(name),
+
+  'sheet-open': openSheet,
+  'sheet-close': () => closeSheet(),
+  'sheet-view': (view) => setSheetView(view),
+  sample(which) {
+    if (which === 'chat') setSheetView('reading');
+    else if (which === 'photo') toast('That photo shows the product, not the conversation. Pick the chat.');
+    else toast('That shows the payment, which is already in your file as E1.');
+  },
+  'add-chat': () => addE5({ kind: 'chat' }),
+  'pick-file': () => fileInput.click(),
+  'add-tag'(index) {
+    const tag = TAG_LABELS[Number(index)];
+    if (tag && s.sheet?.url) addE5({ kind: 'tag', tag }, { url: s.sheet.url });
+  },
   'rail-open': openRail,
   'rail-close': () => closeRail(),
 };
@@ -156,6 +248,7 @@ document.addEventListener('click', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   if (rail.classList.contains('open')) closeRail();
+  else if (s.sheet) closeSheet();
 });
 
 // ───────────── Start ─────────────
