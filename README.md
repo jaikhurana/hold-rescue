@@ -6,7 +6,7 @@ A concept prototype for the Razorpay x ISB AI x PM Build Challenge, Track 1 ("Ra
 
 > Big merchants get a human agent for this. Hold Rescue gives every small merchant the same help, in software.
 
-**Live prototype:** _added after deployment_ · opens on any phone, no login.
+**Live prototype: https://hold-rescue.vercel.app** · opens on any phone, no login. On a laptop it shows a phone frame with the presenter controls beside it; on a phone, tap "Demo controls".
 
 Fictional merchant, customer and police data. Styled with Razorpay's open-source [Blade](https://github.com/razorpay/blade) design tokens (MIT); **not a Razorpay product**.
 

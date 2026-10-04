@@ -141,3 +141,60 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
 - **Decisions and trade-offs:** The dark `--primary` change is two lightness points and was the only deliberate change to a Blade token, made because the brief asks for contrast that holds in dark mode.
 - **How it was verified:** `npm test` → 35/35 (with the date tests); `npm run test:e2e` → 12/12; re-ran the contrast script (no text pairing below 4.5:1 in use) and the tap-target sweep (every control ≥ 40 px); checked visually at 821×700 dark (narrowest desktop layout) and checked Home and Hold detail after release.
 - **Real versus simulated:** No change.
+
+## M9 · GitHub
+
+- **When / goal:** 5 Oct 2026. The code in a repository under the owner's account.
+- **What I asked:** Ask for visibility, then `gh repo create`.
+- **What Claude did:** Checked that the name was free, then ran `gh repo create hold-rescue --private --source . --remote origin --push`. The owner chose **private**.
+- **Decisions and trade-offs:** Before the first push, Claude checked the history for secrets. The brief's literal check (`git log -p | grep -i gsk_`) always matches `docs/brief.md` itself, which quotes that command, and a fake value in a unit test. So Claude used two stricter checks: key-shaped strings (`gsk_` plus 20 or more letters and digits), and the actual key value, read from `.env.local` through a file descriptor so it was never printed. Both found 0 in history and in tracked files; `.env.local` was never committed.
+- **How it was verified:** `gh repo view` → `PRIVATE`, default branch `main`; `git status -sb` → `main...origin/main`.
+- **Real versus simulated:** Real.
+
+## M10 · Vercel
+
+- **When / goal:** 5 Oct 2026. A public URL that opens on any phone with no login.
+- **What I asked:** With approval: link a new project, add the key without displaying it, connect GitHub, deploy to production.
+- **What Claude did:** `npx vercel link --yes --project hold-rescue` (framework "Other"; this also connected the GitHub repo); `grep '^GROQ_API_KEY=' .env.local | cut -d= -f2- | tr -d '\r\n' | npx vercel env add GROQ_API_KEY production` and the same for `preview` (both stored as hidden Secrets); `npx vercel --prod`.
+- **Decisions and trade-offs:** `vercel link` rewrote `.env.local` to add a `VERCEL_OIDC_TOKEN`. Claude checked straight away, by variable names only, that `GROQ_API_KEY` was still there and the file still git-ignored. `.vercelignore` keeps `.env*`, tests, scripts and docs out of every upload.
+- **How it was verified:** `vercel env ls` → `GROQ_API_KEY` as a hidden Secret in Production and Preview.
+- **Real versus simulated:** Real.
+
+## M11 · Verify production
+
+- **When / goal:** 5 Oct 2026. Prove the live site works for a judge on a phone.
+- **What Claude did and found (all against https://hold-rescue.vercel.app, logged out):**
+  - The page returns 200 with no login wall. The per-deployment URL returns 302 to Vercel login, so previews stay protected and production is open, as the brief requires.
+  - `GET /api/health` → `{"ok":true,"ai":true,"model":"gpt-oss-120b"}`.
+  - `GET /api/draft` → 405; bad JSON → 400; a 3 KB body → 413.
+  - `/.env.local`, `/.env`, `/tests/…`, `/scripts/…`, `/docs/brief.md` → 404.
+  - Real streamed drafts: English first chunk 677 ms, done 1.1 s; Hindi 692 ms, done 1.3 s; 6 tags in plan order; says plainly it is an exchange dispute, not fraud.
+  - `BASE_URL=https://hold-rescue.vercel.app npm run test:e2e` → **12/12 passed** at 390×844 and 1440×900, including the full journey with the live model.
+  - In the in-app browser at 390 px: rail "Live: gpt-oss-120b…", statement "Drafted live by gpt-oss-120b · open model" with 6 proof chips.
+- **Real versus simulated:** Real.
+
+## M12 · Finish
+
+- **When / goal:** 5 Oct 2026. Hand over.
+- **What Claude did:** Put the live URL in `README.md`, completed this log, committed and pushed to `main`; the push deploys automatically through the GitHub connection.
+
+---
+
+## AI in the product
+
+**Which model, and why an open one.** The statement is drafted by **gpt-oss-120b**, OpenAI's open-weight model (Apache 2.0), served free by Groq, with **gpt-oss-20b** as the fallback. An open model means the merchant's dispute isn't tied to one closed vendor, a payment company could run the same weights on its own servers, and the prototype costs nothing to run. Claude confirmed both model IDs against Groq's live model list before building on them (M1). `GROQ_MODEL` can override the first choice.
+
+**How the prompt is restricted to the case file.**
+- The browser can send only `{ lang, variant, fresh, e5 }`. The server whitelists each field (unknown values fall back to safe defaults; an unknown E5 label becomes "no E5"), drops everything else, and refuses bodies over 2 KB before parsing them.
+- The whole prompt is built on the server from `case-data.js`, the same module the screens render from, so the facts the merchant sees are exactly the facts the model is given. No free text from the browser ever reaches the model; a unit test injects `prompt` and `system` fields and checks they never appear in the request to Groq.
+- The prompt is a **sentence plan**: what each sentence covers and which proof it cites. It leads with the OTP-confirmed delivery and the customer's own exchange request, then states plainly what this is. An uploaded screenshot is described only as "attached, contents not read", because the app never reads it.
+- The complainant's identity is not in the data at all, so it can't be leaked.
+
+**How made-up facts and accusations are prevented.**
+- The system prompt forbids inventing facts, names, legal sections or promises, and forbids accusing the customer of fraud or any crime.
+- Every `[E1]`–`[E5]` tag in the output is checked against the evidence actually in the case file; tags for anything else are removed (tested with an invented `[E9]`). Tag shapes the model improvises (`[E1, E2]`, `[E1–E3]`, `【E1】`, `(E1)`) are normalised so every claim links to its proof.
+- Each tag is a tappable chip that shows the merchant the underlying evidence, so the merchant checks the AI's claims before signing a declaration that the facts are true.
+- A finished draft that cites no proof, or is under 20 words, is not shown. The standard draft replaces it, with a note saying why. The server never caches such a draft.
+- The merchant can edit the statement; tags they type are checked the same way, and the source chip changes to "Edited by you".
+
+**What happens on failure.** If the model sends no text within 30 s, takes more than 90 s, is rate-limited, misconfigured (no key) or down, the browser shows the pre-written standard statement with a quick typewriter effect and a toast: "The open model did not answer, so this is the standard draft." On the server, a model that errors or returns nothing hands over to the next model within one shared 28 s budget, before anything is streamed. Redraft, which skips the cache, is capped per visitor (6 a minute) and per instance (30 a minute) so a public link can't use up the free quota. The presenter can also switch to **Scripted** for a demo that is identical every time and makes no AI calls.
