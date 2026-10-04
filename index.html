@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Hold Rescue · concept prototype</title>
+  <meta name="description" content="A small merchant answers a police-complaint payment hold from their phone in under two minutes. Concept prototype with fictional data.">
+  <meta property="og:title" content="Hold Rescue">
+  <meta property="og:description" content="Big merchants get a human agent for police-complaint holds. Hold Rescue gives every small merchant the same help, in software.">
+  <meta name="theme-color" content="#F5F6F8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#131517" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23166DF2'/%3E%3Ctext x='16' y='23' font-family='sans-serif' font-size='20' font-weight='700' fill='white' text-anchor='middle'%3E%E2%82%B9%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=TASA+Orbiter:wght@400..800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <div class="stage">
+    <!-- Presenter rail: left column on desktop, a bottom sheet behind "Demo controls" on phones. -->
+    <aside class="rail" id="rail" aria-label="Demo controls and presenter notes">
+      <div class="rail-sheet-head">
+        <span class="rail-grabber" aria-hidden="true"></span>
+        <p>Demo controls</p>
+        <button class="icon-btn" type="button" data-action="rail-close" aria-label="Close demo controls">
+          <svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+        </button>
+      </div>
+
+      <p class="rail-eyebrow">Concept prototype · Track 1</p>
+      <h1 class="rail-title">Hold Rescue</h1>
+      <p class="rail-pitch">A police complaint freezes ₹1,800 of a small merchant's money. Today they write it off. Here they answer it from their phone in under two minutes.</p>
+
+      <section class="timer-card" aria-label="Alert to submitted timer">
+        <div class="timer-head">
+          <span class="eyebrow">Alert to submitted</span>
+          <span class="timer-goal">Goal: under 2:00</span>
+        </div>
+        <p class="timer-value" id="timer-value">0:00</p>
+        <div class="timer-bar" aria-hidden="true"><span id="timer-fill"></span></div>
+      </section>
+
+      <ol class="steps" id="steps" aria-label="Jump to a step">
+        <li><button type="button" data-action="jump" data-arg="1"><span class="step-n">1</span><span>Alert arrives</span></button></li>
+        <li><button type="button" data-action="jump" data-arg="2"><span class="step-n">2</span><span>Understand the hold</span></button></li>
+        <li><button type="button" data-action="jump" data-arg="3"><span class="step-n">3</span><span>Case file builds itself</span></button></li>
+        <li><button type="button" data-action="jump" data-arg="4"><span class="step-n">4</span><span>Add the customer's chat</span></button></li>
+        <li><button type="button" data-action="jump" data-arg="5"><span class="step-n">5</span><span>Statement drafted by AI</span></button></li>
+        <li><button type="button" data-action="jump" data-arg="6"><span class="step-n">6</span><span>Review and submit</span></button></li>
+        <li><button type="button" data-action="jump" data-arg="7"><span class="step-n">7</span><span>Track to release</span></button></li>
+      </ol>
+
+      <div class="rail-buttons">
+        <button class="btn btn-secondary" type="button" data-action="restart">Restart</button>
+        <button class="btn btn-primary" type="button" data-action="advance" id="advance" disabled>Advance time</button>
+      </div>
+
+      <section class="ai-card" aria-label="Drafting mode">
+        <div class="ai-head">
+          <span class="eyebrow">Drafting</span>
+          <div class="seg" role="group" aria-label="Drafting mode">
+            <button type="button" data-action="ai-mode" data-arg="live" aria-pressed="true">Live AI</button>
+            <button type="button" data-action="ai-mode" data-arg="scripted" aria-pressed="false">Scripted</button>
+          </div>
+        </div>
+        <p class="ai-status" id="ai-status"><span class="ai-dot" aria-hidden="true"></span><span id="ai-status-text">Checking the open model…</span></p>
+      </section>
+
+      <div class="notes">
+        <details>
+          <summary>Product decisions</summary>
+          <ul>
+            <li>Lead with delivery proof and the customer's exchange request. In our merchant interview, all three holds in six months were exchange disputes over courier charges.</li>
+            <li>Never show who complained.</li>
+            <li>Promise a complete, on-time response, not an outcome. Police decide.</li>
+            <li>AI writes only from the case file, tags every line with its proof, and never accuses the customer.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Left out on purpose</summary>
+          <ul>
+            <li>Freezes on the merchant's own bank account (v1 exports the case file instead).</li>
+            <li>Large holds that already get a human case manager.</li>
+            <li>Contacting the customer or the police on the merchant's behalf.</li>
+            <li>Refunds and chargebacks.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>What we'd measure</summary>
+          <ul>
+            <li>Share of holds under ₹50,000 answered before the deadline.</li>
+            <li>Time from alert to submitted, median and 90th percentile (goal under 2 min).</li>
+            <li>Money released as a share of money held, and days on hold.</li>
+            <li>Guardrail: statements officers flag as inaccurate.</li>
+          </ul>
+        </details>
+      </div>
+
+      <p class="fine">Fictional merchant, customer and police data. Styled with Razorpay's open-source Blade design tokens; not a Razorpay product. A concept for the Razorpay x ISB AI x PM Build Challenge, by Jai Khurana.</p>
+    </aside>
+
+    <!-- The phone. On desktop it is drawn inside a device frame; on phones it fills the screen. -->
+    <div class="device">
+      <div class="phone" id="phone" data-tone="on-dark" role="region" aria-label="Prototype phone screen">
+        <div class="statusbar" aria-hidden="true">
+          <span class="sb-time">10:12</span>
+          <span class="island"></span>
+          <span class="sb-icons">
+            <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+            <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M1.6 4.4a9.4 9.4 0 0 1 12.8 0"/><path d="M4.2 7.2a5.6 5.6 0 0 1 7.6 0"/><circle cx="8" cy="10" r="1.3" fill="currentColor" stroke="none"/></svg>
+            <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.6" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="17.5" height="9" rx="2.2" fill="currentColor"/><path d="M25 4.4v4.2c.8-.3 1.4-1.1 1.4-2.1s-.6-1.8-1.4-2.1z" fill="currentColor" opacity=".5"/></svg>
+          </span>
+        </div>
+        <div class="strip">
+          <span class="strip-label">Concept · fictional data</span>
+          <button class="demo-pill" type="button" data-action="rail-open" aria-controls="rail" aria-expanded="false">
+            <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+            Demo controls
+          </button>
+        </div>
+        <div class="viewport" id="viewport"></div>
+        <div class="push-layer" id="push-layer"></div>
+        <div class="sheet-root" id="sheet-root"></div>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+        <div class="home-ind" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+  <div class="rail-scrim" id="rail-scrim" data-action="rail-close" hidden></div>
+  <noscript><p class="noscript">Hold Rescue needs JavaScript to run.</p></noscript>
+</body>
+</html>

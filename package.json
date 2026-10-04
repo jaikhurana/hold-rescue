@@ -1,0 +1,13 @@
+{
+  "name": "hold-rescue",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hold Rescue: a small merchant answers a police-complaint payment hold from their phone in under two minutes. Concept prototype with fictional data.",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env.local scripts/dev-server.js",
+    "check:groq": "node --env-file=.env.local scripts/check-groq.js",
+    "test": "node --test \"tests/unit/*.test.js\"",
+    "test:e2e": "playwright test"
+  }
+}

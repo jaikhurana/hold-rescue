@@ -44,3 +44,17 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
   - `openai/gpt-oss-20b` → 200 `text/event-stream`; first token 411 ms, done 420 ms; same text; 0 reasoning deltas.
   - Rate-limit headers on the free tier: 1,000 requests/day and 8,000 tokens/min, matching the brief.
 - **Real versus simulated:** Real.
+
+## M2 · Skeleton and design system
+
+- **When / goal:** 5 Oct 2026. The look, layout and navigation everything else hangs on, plus the lock and home screens.
+- **What I asked:** Tokens, fonts, phone frame and rail layout, both themes, phone-width behaviour, navigation and transitions, lock and home.
+- **What Claude did:** Wrote `index.html` (presenter rail as plain markup, phone shell with fake status bar, concept strip, toast and sheet layers), `styles.css` (Blade colour tokens for light and dark, frame, rail, components), `icons.js` (hand-drawn 1.8-stroke line icons), `case-data.js` (all fictional data in one module, including the scripted statements and timeline for later milestones), `screens.js` (one render function per screen), `app.js` (state, back stack, transitions, toasts, rail sheet), and `scripts/dev-server.js`.
+- **Decisions and trade-offs:**
+  - Screens render from one state object, so the alert card, tab count, chip and badges all change together when the hold's state changes.
+  - The status bar and strip are overlays; each screen pads its top by `--top`, so the lock wallpaper and navy hero run under the status bar as the brief asks, while app bars stay solid.
+  - The phone frame is 414 × min(868, 100dvh − 56) outside with a 12 px bezel, which gives a 390 × 844 screen inside (an iPhone 14).
+  - The local dev server imports the same `api/*.js` modules Vercel will run, and refuses dotfiles and path traversal, so `.env.local` can't be served by accident. Checked with curl: `/.env.local`, `/%2eenv.local` and `/../../etc/passwd` all return 404.
+  - Copy fix: the scripted "attach" sentence says "screenshot of our conversation" only when the merchant tagged the upload as the exchange request, and otherwise "a screenshot from my phone", so the standard draft never claims more than the merchant said.
+- **How it was verified:** In the in-app browser at 1440×900 (light and dark) and at 390×844 and 360×740: lock → alert → back to Home; the quick-action toast; the Demo controls sheet opens with focus on Close, makes the phone inert, and Escape closes it and returns focus. Measured: `scrollWidth` equals viewport width at 360 and 390, the Demo controls pill is 40 px tall, and no element overflows the viewport.
+- **Real versus simulated:** Everything on screen is fictional data; the status bar is drawn.
