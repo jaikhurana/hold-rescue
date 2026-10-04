@@ -1,0 +1,14 @@
+# Never upload secrets or local tooling. The site needs only the page, its modules,
+# api/, lib/, vercel.json and package.json ("type": "module").
+.env*
+.claude
+.git
+node_modules
+tests
+test-results
+playwright-report
+playwright.config.js
+scripts
+docs
+README.md
+BUILD_LOG.md
