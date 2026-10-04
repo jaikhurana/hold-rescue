@@ -99,3 +99,16 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
   - Small fix found on screen: value cells in the facts lists were flex boxes, which put a double gap in "162  words". Flex is now opt-in for cells with an icon.
 - **How it was verified:** Full run in the in-app browser at 1440×900 (light): live draft → Review (Submit disabled until the declaration is ticked; 5 items; live word count 162; call-time chips) → Submit → Submitted (0:14, "Under the 2-minute goal"; rail timer stopped; rail button "Advance to Tue 6 Oct") → Tracker → Skip ahead (stage 1, "Grievance filed" banner) → Advance (stage 2, "Video call booked", 3-item checklist) → Advance (stage 3, "Hold lifted: ₹1,800 is yours" banner, Released badge, three later steps faded, "See the result") → Outcome (14 s · 11 days · Fri 16 Oct 2026 · ₹3,750 on 2 holds) → Done → Holds tab (Recovered ₹1,800, "Resolved", no red count) → Home ("HOLD LIFTED", chip "₹1,800 released"). Outcome checked again at 390×844 in dark mode.
 - **Real versus simulated:** Submitting sends nothing ("Prototype: nothing is actually sent."). Filing, the video call and the release are a scripted story moved along by "Advance time".
+
+## M6 · Presenter rail
+
+- **When / goal:** 5 Oct 2026. Let a presenter drive the demo: jump to any step, restart, move time forward, and choose live or scripted drafting.
+- **What I asked:** Steps and jumps, Restart, Advance time, the AI toggle and status, notes, and the bottom sheet on phones.
+- **What Claude did:** `jump()`, `restart()` and `syncAi()` in `app.js`; the rail markup was already plain HTML in `index.html` (pitch, timer, seven steps, notes, fine print with "not a Razorpay product").
+- **Decisions and trade-offs:**
+  - A jump fills in what the earlier steps would have produced and nothing more. Step 5 and later add the sample chat as E5 only if none was added. Step 6 and later use the scripted statement only if no draft exists, so a live draft is kept. Step 7 marks the response submitted and stops a running timer.
+  - Restart keeps the presenter's settings (Live/Scripted mode and model status) but resets the story, timer, uploads and drafts.
+  - Scripted mode makes no network calls at all, so a recording is identical every time.
+  - On phones, a jump closes the Demo controls sheet and moves focus to the new screen's heading.
+- **How it was verified:** In the in-app browser: the status line on load reads "Live: gpt-oss-120b, an open model running on Groq…" (from `/api/health`); jumping 2 → 3 → 4 → 5 → 6 → 7 → 1 lands on the right screen with the right rail step each time (4 opens the sheet; 5 adds the chat; 7 sets submitted); Restart → lock screen, timer 0:00, Advance disabled. Scripted mode: 0 calls to `/api/draft`, typewriter, no toast, "Standard draft from your case file". Phone width: a jump from the sheet closes it and focuses the Review heading.
+- **Real versus simulated:** The rail is presenter tooling, not part of the merchant's app.

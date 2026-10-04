@@ -165,14 +165,19 @@ function closeSheet({ restoreFocus = true } = {}) {
   syncRail();
 }
 
-/** Sets E5, clears any drafted statement (it no longer matches the case file) and returns to the file. */
-function addE5(e5, upload = null) {
+/** Sets E5 and clears any drafted statement, which no longer matches the case file. */
+function setE5(e5, upload = null) {
   if (s.upload && s.upload.url !== upload?.url) URL.revokeObjectURL(s.upload.url);
   s.e5 = e5;
   s.upload = upload;
   cancelDraft();
   s.drafts = {};
   s.editing = false;
+}
+
+/** Adds E5 from the sheet and returns to the case file. */
+function addE5(e5, upload = null) {
+  setE5(e5, upload);
   s.justAdded = true;
   closeSheet({ restoreFocus: false });
   refresh();
@@ -368,6 +373,71 @@ function syncRail() {
   syncTimer();
 }
 
+const aiCard = $('.ai-card');
+const aiStatus = $('#ai-status-text');
+
+function syncAi() {
+  rail.querySelectorAll('[data-action="ai-mode"]').forEach((btn) => btn.setAttribute('aria-pressed', String(btn.dataset.arg === s.aiMode)));
+  let state;
+  let text;
+  if (s.aiMode === 'scripted') {
+    state = 'scripted';
+    text = 'Scripted: instant and the same every time. Best for recording.';
+  } else if (s.health.ai === true) {
+    state = 'live';
+    text = `Live: ${s.health.model}, an open model running on Groq, drafts the statement. Free, no login.`;
+  } else if (s.health.ai === false) {
+    state = 'missing';
+    text = "Open model not connected yet: add GROQ_API_KEY under Vercel's Environment Variables, then redeploy. Until then, drafts use the scripted text.";
+  } else {
+    state = 'checking';
+    text = 'Checking the open model…';
+  }
+  aiCard.dataset.state = state;
+  aiStatus.textContent = text;
+}
+
+/** Jumps to a demo step, filling in whatever the earlier steps would have produced. */
+function jump(step) {
+  closeRail({ restoreFocus: false });
+  closeSheet({ restoreFocus: false });
+  hidePush();
+  if (step >= 5 && !s.e5) setE5({ kind: 'chat' });
+  if (step >= 6) ensureDraft();
+  if (step >= 7 && !s.submitted) {
+    clearTimeout(submitTimer);
+    s.submitting = false;
+    s.declared = true;
+    s.timer.end ??= s.timer.start ? Date.now() : null;
+    s.submitted = true;
+  }
+  const routes = {
+    1: [[], 'lock'],
+    2: [['home'], 'hold'],
+    3: [['home', 'hold'], 'casefile'],
+    4: [['home', 'hold'], 'casefile'],
+    5: [['home', 'hold', 'casefile'], 'statement'],
+    6: [['home', 'hold', 'casefile', 'statement'], 'review'],
+    7: [['home'], 'tracker'],
+  };
+  const [stack, screen] = routes[step];
+  s.stack = [...stack];
+  show(screen, 'fade');
+  if (step === 4) openSheet();
+}
+
+/** Back to the lock screen with a clean slate. The drafting mode and model status are kept. */
+function restart() {
+  cancelDraft();
+  clearTimeout(submitTimer);
+  closeRail({ restoreFocus: false });
+  closeSheet({ restoreFocus: false });
+  hidePush();
+  if (s.upload) URL.revokeObjectURL(s.upload.url);
+  s = { ...initialState(), aiMode: s.aiMode, health: s.health };
+  show('lock', 'fade');
+}
+
 function openRail() {
   rail.classList.add('open');
   railScrim.hidden = false;
@@ -473,6 +543,13 @@ const actions = {
   },
   done: () => goTab('holds'),
 
+  // Presenter rail
+  jump: (step) => jump(Number(step)),
+  restart,
+  'ai-mode'(mode) {
+    s.aiMode = mode === 'scripted' ? 'scripted' : 'live';
+    syncAi();
+  },
   'rail-open': openRail,
   'rail-close': () => closeRail(),
 };
@@ -505,12 +582,16 @@ document.addEventListener('keydown', (event) => {
 
 show('lock', 'none', { focus: false });
 
+syncAi();
 fetch('/api/health')
   .then((res) => (res.ok ? res.json() : null))
   .then((health) => {
-    if (health) s.health = { ai: Boolean(health.ai), model: String(health.model || 'gpt-oss-120b') };
+    s.health = health ? { ai: Boolean(health.ai), model: String(health.model || 'gpt-oss-120b') } : { ...s.health, ai: false };
   })
-  .catch(() => {});
+  .catch(() => {
+    s.health = { ...s.health, ai: false };
+  })
+  .finally(syncAi);
 
 // Exposed for debugging in the browser console only.
 window.holdRescue = { get state() { return s; }, refresh };
