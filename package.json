@@ -9,5 +9,8 @@
     "check:groq": "node --env-file=.env.local scripts/check-groq.js",
     "test": "node --test \"tests/unit/*.test.js\"",
     "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

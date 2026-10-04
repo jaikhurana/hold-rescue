@@ -61,7 +61,10 @@ export function typedSlice(text, n) {
   return close >= n ? text.slice(0, close + 1) : text.slice(0, n);
 }
 
-/** Word count, ignoring evidence tags. */
+/** Word count, ignoring evidence tags and stray punctuation (works for Devanagari too). */
 export function wordCount(text) {
-  return String(text ?? '').replace(/\[E\d\]/g, ' ').split(/\s+/).filter(Boolean).length;
+  return String(text ?? '')
+    .replace(/\[E\d\]/g, ' ')
+    .split(/\s+/)
+    .filter((word) => /[\p{L}\p{N}]/u.test(word)).length;
 }
