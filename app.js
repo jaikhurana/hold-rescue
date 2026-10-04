@@ -1,6 +1,9 @@
 // Hold Rescue · app state, navigation and demo controls.
 // State lives in memory only; a reload restarts the demo.
-import { SCREENS, TONE, NOT_IN_PROTOTYPE, TAG_LABELS, sheetBody, sheetFrame, stepOf } from './screens.js';
+import { evidenceFor } from './case-data.js';
+import { streamDraft } from './draft-client.js';
+import { SCREENS, TONE, NOT_IN_PROTOTYPE, TAG_LABELS, currentDraft, draftKey, sheetBody, sheetFrame, statementParts, stepOf } from './screens.js';
+import { cleanDraft, scriptedStatement, typedSlice, wordCount } from './statement.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -20,12 +23,21 @@ const initialState = () => ({
   upload: null, // { url } for a real image the merchant picked; stays in the browser as an object URL
   caseRevealed: false, // the case file staggers in only the first time
   justAdded: false, // animate the E5 card once after it is added
+  lang: 'en', // statement language: 'en' | 'hi'
+  variant: '', // '' | 'shorter'
+  drafts: {}, // `${lang}|${variant}` → { text, source: 'live'|'scripted'|'edited', model? }
+  drafting: null, // the draft in progress: { key, phase: 'waiting'|'streaming'|'typing', text, model, controller? }
+  editing: false,
   timer: { start: null, end: null },
   submitted: false,
   stage: 0, // 0 submitted · 1 filed · 2 call booked · 3 released
+  // Presenter settings, kept across Restart:
+  aiMode: 'live', // 'live' | 'scripted'
+  health: { ai: null, model: 'gpt-oss-120b' },
 });
 
 let s = initialState();
+const TYPEWRITER_MS = 2300;
 
 // ───────────── Navigation ─────────────
 
@@ -62,6 +74,7 @@ function show(name, how = 'fwd', { focus = true } = {}) {
 function afterShow(name) {
   if (name === 'hold' && !s.timer.start) s.timer.start = Date.now();
   if (name === 'casefile') s.caseRevealed = true;
+  if (name === 'statement' && !currentDraft(s) && !s.drafting) startDraft();
 }
 
 function go(name) {
@@ -151,6 +164,9 @@ function addE5(e5, upload = null) {
   if (s.upload && s.upload.url !== upload?.url) URL.revokeObjectURL(s.upload.url);
   s.e5 = e5;
   s.upload = upload;
+  cancelDraft();
+  s.drafts = {};
+  s.editing = false;
   s.justAdded = true;
   closeSheet({ restoreFocus: false });
   refresh();
@@ -170,6 +186,108 @@ fileInput.addEventListener('change', () => {
   if (s.sheet.url && s.sheet.url !== s.upload?.url) URL.revokeObjectURL(s.sheet.url);
   setSheetView('tag', { url: URL.createObjectURL(file) });
 });
+
+// ───────────── Drafting the statement ─────────────
+
+const validIds = () => new Set(evidenceFor(s.e5).map((item) => item.id));
+
+/** Drafts the statement for the current language and length: live from the open model, or scripted. */
+function startDraft({ fresh = false } = {}) {
+  cancelDraft();
+  const key = draftKey(s);
+  if (s.aiMode === 'scripted') return typeScripted(key);
+
+  const job = { key, phase: 'waiting', text: '', model: s.health.model, controller: new AbortController(), stopped: false };
+  s.drafting = job;
+  updateStatement();
+  const valid = validIds();
+  // Exactly the four fields the server accepts. e5 is null, { kind: 'chat' } or { kind: 'tag', tag }.
+  const params = { lang: s.lang, variant: s.variant, fresh, e5: s.e5 };
+
+  streamDraft(params, {
+    signal: job.controller.signal,
+    onText(raw, model) {
+      if (s.drafting !== job) return;
+      job.phase = 'streaming';
+      job.model = model;
+      job.text = cleanDraft(raw, valid);
+      updateStatement();
+    },
+  })
+    .then((result) => {
+      if (s.drafting !== job) return;
+      const text = cleanDraft(result.text, valid);
+      if (wordCount(text) < 20) throw new Error('too_short');
+      // Guardrail: every statement must point the officer to its proof.
+      if (!/\[E\d\]/.test(text)) throw new Error('no_tags');
+      finishDraft(key, { text, source: 'live', model: result.model });
+    })
+    .catch((err) => {
+      if (s.drafting !== job) return; // replaced by a newer draft, a language switch or a restart
+      if (job.stopped && wordCount(job.text) >= 20) return finishDraft(key, { text: job.text, source: 'live', model: job.model });
+      let message = 'The open model did not answer, so this is the standard draft.';
+      if (job.stopped) message = 'Stopped, so this is the standard draft.';
+      else if (err?.message === 'no_tags') message = "The open model's draft didn't cite its proof, so this is the standard draft.";
+      typeScripted(key, message);
+    });
+}
+
+function finishDraft(key, draft) {
+  s.drafts[key] = draft;
+  s.drafting = null;
+  updateStatement();
+}
+
+/** Types out the scripted statement in about 2.3 s (instantly with reduced motion). */
+function typeScripted(key, toastMessage) {
+  const [lang, variant] = key.split('|');
+  const full = scriptedStatement(lang, variant, s.e5);
+  const job = { key, phase: 'typing', text: '' };
+  s.drafting = job;
+  if (toastMessage) toast(toastMessage);
+  if (reducedMotion.matches) return finishDraft(key, { text: full, source: 'scripted' });
+  const started = performance.now();
+  // A timer rather than requestAnimationFrame, so the draft still finishes if the tab is in the background.
+  const step = () => {
+    if (s.drafting !== job) return;
+    const n = Math.min(full.length, Math.ceil((full.length * (performance.now() - started)) / TYPEWRITER_MS));
+    if (n >= full.length) return finishDraft(key, { text: full, source: 'scripted' });
+    job.text = typedSlice(full, n);
+    updateStatement();
+    setTimeout(step, 30);
+  };
+  updateStatement();
+  setTimeout(step, 30);
+}
+
+function cancelDraft() {
+  s.drafting?.controller?.abort();
+  s.drafting = null;
+}
+
+/** For demo jumps past the drafting step: use the scripted statement if there is no draft yet. */
+function ensureDraft() {
+  cancelDraft();
+  s.editing = false;
+  const key = draftKey(s);
+  s.drafts[key] ??= { text: scriptedStatement(s.lang, s.variant, s.e5), source: 'scripted' };
+}
+
+let statementSig = '';
+/** Updates the statement screen. Streaming text only touches the text, so buttons are never swapped mid-tap. */
+function updateStatement() {
+  if (s.screen !== 'statement') return;
+  const el = currentScreen();
+  const parts = statementParts(s);
+  const sig = `${parts.tools}|${parts.busy}`;
+  if (sig !== statementSig) {
+    statementSig = sig;
+    refresh();
+    return;
+  }
+  $('#st-text', el).innerHTML = parts.text;
+  $('#st-source', el).innerHTML = parts.source;
+}
 
 // ───────────── Presenter rail ─────────────
 
@@ -235,6 +353,43 @@ const actions = {
     const tag = TAG_LABELS[Number(index)];
     if (tag && s.sheet?.url) addE5({ kind: 'tag', tag }, { url: s.sheet.url });
   },
+  proof(id) {
+    const item = evidenceFor(s.e5).find((e) => e.id === id);
+    if (item) toast(`${id} · ${item.title}: ${item.shown ?? `“${item.quote}”`}`);
+  },
+  lang(lang) {
+    if (lang === s.lang || s.editing) return;
+    cancelDraft(); // switching language while drafting cancels that draft
+    s.lang = lang === 'hi' ? 'hi' : 'en';
+    refresh();
+    if (!currentDraft(s)) startDraft();
+  },
+  shorter() {
+    s.variant = s.variant ? '' : 'shorter';
+    refresh();
+    if (!currentDraft(s)) startDraft();
+  },
+  redraft: () => startDraft({ fresh: true }),
+  stop() {
+    if (!s.drafting?.controller) return;
+    s.drafting.stopped = true;
+    s.drafting.controller.abort();
+  },
+  edit() {
+    if (!currentDraft(s) || s.drafting) return;
+    s.editing = true;
+    refresh();
+    $('#st-edit')?.focus();
+  },
+  'edit-done'() {
+    const draft = currentDraft(s);
+    const text = cleanDraft($('#st-edit')?.value ?? '', validIds());
+    if (!text) toast("Your statement can't be empty, so the last version is kept.");
+    else if (text !== draft.text) s.drafts[draftKey(s)] = { ...draft, text, source: 'edited' };
+    s.editing = false;
+    refresh();
+  },
+
   'rail-open': openRail,
   'rail-close': () => closeRail(),
 };
@@ -254,6 +409,13 @@ document.addEventListener('keydown', (event) => {
 // ───────────── Start ─────────────
 
 show('lock', 'none', { focus: false });
+
+fetch('/api/health')
+  .then((res) => (res.ok ? res.json() : null))
+  .then((health) => {
+    if (health) s.health = { ai: Boolean(health.ai), model: String(health.model || 'gpt-oss-120b') };
+  })
+  .catch(() => {});
 
 // Exposed for debugging in the browser console only.
 window.holdRescue = { get state() { return s; }, refresh };

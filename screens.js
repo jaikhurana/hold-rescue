@@ -2,7 +2,7 @@
 // Rendering from state (rather than hand-written markup) keeps every badge, count and
 // amount in step as the hold moves from "on hold" to "under review" to "released".
 import { icon } from './icons.js';
-import { CHAT, E5_LABELS, EVIDENCE, HOLD, HOME, LEDGER, MERCHANT, PAST_HOLDS, e5Item, isExchangeDispute } from './case-data.js';
+import { CHAT, E5_LABELS, EVIDENCE, HOLD, HOME, LEDGER, LETTER, MERCHANT, PAST_HOLDS, e5Item, isExchangeDispute } from './case-data.js';
 
 export const NOT_IN_PROTOTYPE = 'Not part of this prototype.';
 
@@ -407,6 +407,89 @@ export function sheetBody(s) {
 /** The labels a merchant can give an uploaded screenshot (index matches the chips above). */
 export const TAG_LABELS = E5_LABELS;
 
+// ───────────── 7. Your statement ─────────────
+
+export const draftKey = (s) => `${s.lang}|${s.variant}`;
+export const currentDraft = (s) => s.drafts[draftKey(s)] ?? null;
+
+/** Statement text with every [E1]–[E5] as a small tappable proof chip. */
+function withTags(text) {
+  return text
+    .split(/(\[E\d\])/)
+    .map((part) => {
+      const tag = part.match(/^\[(E\d)\]$/);
+      return tag
+        ? `<button class="tag" type="button" data-action="proof" data-arg="${tag[1]}" aria-label="Proof ${tag[1]}">${tag[1]}</button>`
+        : esc(part);
+    })
+    .join('');
+}
+
+/** The parts of the statement screen that change while drafting, rendered separately. */
+export function statementParts(s) {
+  const job = s.drafting?.key === draftKey(s) ? s.drafting : null;
+  const draft = currentDraft(s);
+  const busy = Boolean(job) || s.editing;
+
+  let source;
+  if (job && job.phase !== 'typing') source = `<p class="source live"><span class="live-dot" aria-hidden="true"></span>Drafting live with ${job.model} · open model</p>`;
+  else if (job || !draft || draft.source === 'scripted') source = `<p class="source scripted">${icon('file', 16)}Standard draft from your case file</p>`;
+  else if (draft.source === 'edited') source = `<p class="source edited">${icon('edit', 16)}Edited by you</p>`;
+  else source = `<p class="source live">${icon('checkCircle', 16)}Drafted live by ${draft.model} · open model</p>`;
+
+  let text = '';
+  if (s.editing && draft) {
+    text = `<label class="sr-only" for="st-edit">Edit your statement</label><textarea id="st-edit" class="edit-area" spellcheck="true">${esc(draft.text)}</textarea>`;
+  } else if (job && !job.text) {
+    text = '<p class="drafting-note"><span class="spinner" aria-hidden="true"></span>Drafting from your case file…</p>';
+  } else if (job) {
+    text = `<p>${withTags(job.text)}<span class="caret" aria-hidden="true"></span></p>`;
+  } else if (draft) {
+    text = `<p>${withTags(draft.text)}</p>`;
+  }
+
+  let tools;
+  if (s.editing) {
+    tools = `<button class="chip" type="button" data-action="edit-done">${icon('check', 16)}Done</button>`;
+  } else if (job && job.phase !== 'typing') {
+    tools = `<button class="chip" type="button" data-action="stop">${icon('stop', 16)}Stop</button>`;
+  } else {
+    const off = job ? ' disabled' : '';
+    tools = `
+      <button class="chip" type="button" data-action="edit"${off}>${icon('edit', 16)}Edit</button>
+      <button class="chip" type="button" data-action="shorter" aria-pressed="${s.variant === 'shorter'}"${off}>${icon('shorter', 16)}Shorter</button>
+      <button class="chip" type="button" data-action="redraft"${off}>${icon('redraft', 16)}Redraft</button>`;
+  }
+  return { source, text, tools, busy };
+}
+
+function statement(s) {
+  const letter = LETTER[s.lang];
+  const p = statementParts(s);
+  const lockLang = s.editing ? ' disabled' : '';
+  const langToggle = `
+    <div class="seg seg-lang" role="group" aria-label="Language">
+      <button type="button" data-action="lang" data-arg="en" aria-pressed="${s.lang === 'en'}"${lockLang}>EN</button>
+      <button type="button" data-action="lang" data-arg="hi" aria-pressed="${s.lang === 'hi'}" lang="hi"${lockLang}>हिंदी</button>
+    </div>`;
+  return `
+    ${appbar('Your statement', { end: langToggle })}
+    <div class="body">
+      <div id="st-source">${p.source}</div>
+      <article class="letter" lang="${s.lang}" aria-label="Statement to the investigating officer">
+        <p class="letter-to">${letter.to}</p>
+        <p class="letter-re">${letter.re}</p>
+        <div class="letter-text" id="st-text" aria-busy="${p.busy}">${p.text}</div>
+        <p class="letter-sign">${letter.sign}</p>
+      </article>
+      <div class="tools" id="st-tools" role="group" aria-label="Statement tools">${p.tools}</div>
+      <p class="guard">${icon('shield', 18)}<span>AI writes only from your case file. It won't add facts or accuse your customer. Tap a tag to see its proof.</span></p>
+    </div>
+    <footer class="footer">
+      <button class="btn btn-primary btn-block" id="st-submit" type="button" data-action="go" data-arg="review"${p.busy ? ' disabled' : ''}>Review and submit</button>
+    </footer>`;
+}
+
 // ───────────── Placeholder for screens built in later milestones ─────────────
 
 function placeholder(title) {
@@ -421,7 +504,7 @@ export const SCREENS = {
   holds,
   hold,
   casefile,
-  statement: placeholder('Your statement'),
+  statement,
   review: placeholder('Review and submit'),
   submitted: placeholder('Response submitted'),
   tracker: placeholder(`Hold · ${HOLD.order}`),
