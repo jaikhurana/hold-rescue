@@ -30,7 +30,8 @@ export const HOLD = {
 };
 
 export const HOME = {
-  nextSettlement: 'Tue 6 Oct',
+  // Settlements reach the bank the day after; this follows the story's date as time advances.
+  nextSettlement: ['Tue 6 Oct', 'Wed 7 Oct', 'Sat 10 Oct', 'Sat 17 Oct'],
   settlement: '₹23,480',
   todayTotal: '₹4,940',
   payments: [

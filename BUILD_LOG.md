@@ -126,3 +126,18 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
 - **Bug the tests caught:** `wordCount` counted a full stop left alone after a tag as a word ("UPI [E1][E2]." → 4). It now counts only tokens with a letter or digit, which also handles a lone `।`.
 - **How it was verified:** `npm test` → 33/33 pass. `npm run test:e2e` → 12/12 pass, twice in a row (about 20 s). The local happy path drafts live through the real model.
 - **Real versus simulated:** The unit tests mock Groq. The end-to-end happy path uses the real model locally (and against production in M11); the fallback test mocks a 503 on purpose.
+
+## M8 · Polish
+
+- **When / goal:** 5 Oct 2026. Find real issues, then fix them: dates, Hindi, dark-mode contrast, tap targets, plain copy.
+- **What I asked:** List real issues, then fix them.
+- **What Claude did (audit first, then fixes):**
+  - **Dates.** Added `tests/unit/dates.test.js`, which scans `case-data.js`, `screens.js` and `index.html` for every weekday-and-date pair and checks it against the real calendar (2026; January → 2027). It also checks the story's intervals: respond in 7 days, decision 15 days after filing, escalation 15 days later, day 75 and day 90 from the hold, 11 days on hold. All 19 distinct dates were correct.
+  - **Stale dates (found by reading the flow, now fixed).** Home's "Next settlement · Tue 6 Oct" didn't move when time advanced; it now follows the story (Tue 6 → Wed 7 → Sat 10 → Sat 17 Oct), and after release the chip reads "Includes ₹1,800 released from the hold". Hold detail kept saying "We file it by Mon 12 Oct" after filing and release; its banner now follows the stage.
+  - **Contrast.** A script read the tokens from `styles.css`, blended the soft tints over their real backgrounds, and computed WCAG ratios for every text pairing in both themes. Everything passed AA except: (1) dark-mode white button text on `--primary`, 4.44:1, fixed by moving dark `--primary` from 55% to 53% lightness (4.75:1), the only deliberate change to a Blade value; (2) white on the solid status fills (alert icons, "NEW" tag, tab count, success check, timeline ticks), which dropped to 2.95–4.11:1 in dark mode. New `--hold-solid`, `--due-solid` and `--ok-solid` tokens stay the same in both themes, so text on them is ≥ 5.4:1 and icons ≥ 4.2:1. The concept strip went from 62% to 72% opacity.
+  - **Tap targets.** A sweep of every button on every screen at 360 px found the segmented toggles (EN/हिंदी, Live AI/Scripted) at 34 px tall (now 40) and the inline proof tags at 25 px wide (now a 41 × 40 px hit area through a pseudo-element, without making the chips bulky in the text).
+  - **Hindi and IDs.** Order numbers like "KK-2417" no longer break at the hyphen in the statement.
+  - **Screen readers.** The push-banner layer is now a polite live region.
+- **Decisions and trade-offs:** The dark `--primary` change is two lightness points and was the only deliberate change to a Blade token, made because the brief asks for contrast that holds in dark mode.
+- **How it was verified:** `npm test` → 35/35 (with the date tests); `npm run test:e2e` → 12/12; re-ran the contrast script (no text pairing below 4.5:1 in use) and the tap-target sweep (every control ≥ 40 px); checked visually at 821×700 dark (narrowest desktop layout) and checked Home and Hold detail after release.
+- **Real versus simulated:** No change.

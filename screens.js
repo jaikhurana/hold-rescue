@@ -122,11 +122,11 @@ function home(s) {
           </div>
           <button class="icon-btn" type="button" data-action="na" aria-label="Notifications">${icon('bell', 22)}</button>
         </div>
-        <p class="hero-label">Next settlement · ${HOME.nextSettlement}</p>
+        <p class="hero-label">Next settlement · ${HOME.nextSettlement[s.stage]}</p>
         <p class="amount">${HOME.settlement}</p>
         <span class="hero-chip">
           <span class="dot ${released ? 'ok' : 'hold'}" aria-hidden="true"></span>
-          ${released ? `${HOLD.amount} released · added on Sat 17 Oct` : `${HOLD.amount} held back from this settlement`}
+          ${released ? `Includes ${HOLD.amount} released from the hold` : `${HOLD.amount} held back from this settlement`}
         </span>
       </header>
 
@@ -212,9 +212,15 @@ function holds(s) {
 // ───────────── 4. Hold detail ─────────────
 
 function hold(s) {
+  const after = [
+    ['Response submitted', `We file it on the national grievance portal by ${HOLD.respondBy} and tell you when the officer replies.`],
+    ['Filed on the national grievance portal', 'The officer decides by Wed 21 Oct. We tell you the moment they reply.'],
+    ['Filed on the national grievance portal', 'Video call booked for Wed 14 Oct, 11:30 AM. We remind you 30 minutes before.'],
+    ['Hold lifted on Fri 16 Oct', `${HOLD.amount} is added to your settlement on ${OUTCOME.creditedOn}.`],
+  ][s.stage];
   const deadline = s.submitted
     ? `<div class="banner pos">${icon('checkCircle')}
-         <p><strong>Response submitted</strong><br>We file it on the national grievance portal by ${HOLD.respondBy} and tell you when the officer replies.</p>
+         <p><strong>${after[0]}</strong><br>${after[1]}</p>
        </div>`
     : `<div class="banner notice">${icon('clock')}
          <div class="deadline">
@@ -226,7 +232,7 @@ function hold(s) {
     ${appbar('Payment on hold')}
     <div class="body">
       <section class="card summary" aria-label="Hold summary">
-        <div class="summary-top"><span class="eyebrow">Amount on hold</span>${statusBadge(s)}</div>
+        <div class="summary-top"><span class="eyebrow">${s.stage >= 3 ? 'Released' : 'Amount on hold'}</span>${statusBadge(s)}</div>
         <p class="amount">${HOLD.amount}</p>
         <p class="small muted">Order ${HOLD.order} · held from your settlement on ${HOLD.placedOn}</p>
       </section>
@@ -421,7 +427,7 @@ function withTags(text) {
       const tag = part.match(/^\[(E\d)\]$/);
       return tag
         ? `<button class="tag" type="button" data-action="proof" data-arg="${tag[1]}" aria-label="Proof ${tag[1]}">${tag[1]}</button>`
-        : esc(part);
+        : esc(part).replace(/\b([A-Z]{2,}-\d+)\b/g, '<span class="nowrap">$1</span>');
     })
     .join('');
 }

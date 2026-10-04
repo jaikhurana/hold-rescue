@@ -30,6 +30,10 @@
   --due-soft: hsl(25 100% 44% / .11);
   --navy: hsl(218 93% 10%);
   --navy-2: hsl(218 90% 20%);
+  /* Solid fills under white icons or text; kept the same in dark mode so white stays readable. */
+  --hold-solid: hsl(4 85% 44%);
+  --due-solid: hsl(25 100% 40%);
+  --ok-solid: hsl(150 100% 28%);
 
   --bezel: #0C0F13;
   --shadow: 0 1px 2px hsl(213 25% 15% / .06), 0 6px 18px hsl(213 25% 15% / .06);
@@ -55,7 +59,7 @@
     --muted: hsl(210 3% 64%);
     --line: hsl(216 4% 22%);
     --line-2: hsl(210 4% 32%);
-    --primary: hsl(218 89% 55%);
+    --primary: hsl(218 89% 53%); /* Blade uses 55%; 53% lets white button text pass 4.5:1 */
     --primary-strong: hsl(218 89% 61%);
     --on-primary: #FFFFFF;
     --primary-text: hsl(217 100% 74%);
@@ -175,7 +179,7 @@ button:disabled { cursor: not-allowed; }
 
 .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--surface-2); }
 .seg button {
-  min-height: 34px;
+  min-height: 40px;
   padding: 0 12px;
   border: 0;
   border-radius: 8px;
@@ -252,7 +256,7 @@ button:disabled { cursor: not-allowed; }
   color: var(--ink);
   pointer-events: none;
 }
-.strip-label { font: 600 9px/1 var(--font-text); letter-spacing: .16em; text-transform: uppercase; opacity: .62; }
+.strip-label { font: 600 9px/1 var(--font-text); letter-spacing: .16em; text-transform: uppercase; opacity: .72; }
 .demo-pill { display: none; }
 .home-ind {
   position: absolute;
@@ -520,7 +524,7 @@ h2[tabindex="-1"]:focus { outline: none; }
   padding: 0 5px;
   border-radius: 9px;
   border: 2px solid var(--surface);
-  background: var(--hold);
+  background: var(--hold-solid);
   color: #fff;
   font: 700 10px/13px var(--font-text);
   text-align: center;
@@ -665,7 +669,7 @@ button.notif:hover { background: hsl(0 0% 100% / .22); }
   right: 6px;
   padding: 3px 5px;
   border-radius: 6px;
-  background: var(--hold);
+  background: var(--hold-solid);
   color: #fff;
   font: 700 9px/1 var(--font-text);
   letter-spacing: .06em;
@@ -690,13 +694,13 @@ button.notif:hover { background: hsl(0 0% 100% / .22); }
 .alert-sub { display: block; font-size: 12.5px; color: var(--muted); }
 .alert-card > .ic:last-child { color: var(--muted); }
 .alert-card.hold { border-color: color-mix(in srgb, var(--hold) 38%, var(--line)); background: linear-gradient(var(--hold-soft), var(--hold-soft)), var(--surface); }
-.alert-card.hold .alert-ic { background: var(--hold); color: #fff; }
+.alert-card.hold .alert-ic { background: var(--hold-solid); color: #fff; }
 .alert-card.hold .eyebrow { color: var(--hold-text); }
 .alert-card.review { border-color: color-mix(in srgb, var(--due) 38%, var(--line)); background: linear-gradient(var(--due-soft), var(--due-soft)), var(--surface); }
-.alert-card.review .alert-ic { background: var(--due); color: #fff; }
+.alert-card.review .alert-ic { background: var(--due-solid); color: #fff; }
 .alert-card.review .eyebrow { color: var(--due-text); }
 .alert-card.released { border-color: color-mix(in srgb, var(--ok) 38%, var(--line)); background: linear-gradient(var(--ok-soft), var(--ok-soft)), var(--surface); }
-.alert-card.released .alert-ic { background: var(--ok); color: #fff; }
+.alert-card.released .alert-ic { background: var(--ok-solid); color: #fff; }
 .alert-card.released .eyebrow { color: var(--ok-text); }
 
 /* ───────────── Holds tab ───────────── */
@@ -936,8 +940,8 @@ button.notif:hover { background: hsl(0 0% 100% / .22); }
   display: inline-flex;
   align-items: center;
   height: 20px;
-  margin: 0 1px;
-  padding: 0 6px;
+  margin: 0 2px;
+  padding: 0 8px;
   border: 0;
   border-radius: 6px;
   vertical-align: 1px;
@@ -945,7 +949,8 @@ button.notif:hover { background: hsl(0 0% 100% / .22); }
   color: var(--primary-text);
   font: 700 11px/1 var(--font-mono);
 }
-.tag::after { content: ""; position: absolute; inset: -10px 0; } /* 40 px tall tap area */
+.tag::after { content: ""; position: absolute; inset: -10px -6px; } /* a 40 × 40 px tap area */
+.nowrap { white-space: nowrap; }
 .tag:hover { background: var(--primary); color: var(--on-primary); }
 .caret { display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; vertical-align: text-bottom; background: var(--primary); animation: blink 1s steps(2, start) infinite; }
 .edit-area {
@@ -1013,7 +1018,7 @@ button.notif:hover { background: hsl(0 0% 100% / .22); }
   place-items: center;
   margin-bottom: 6px;
   border-radius: 50%;
-  background: var(--ok);
+  background: var(--ok-solid);
   color: #fff;
   box-shadow: 0 0 0 10px var(--ok-soft);
   animation: pop .5s cubic-bezier(.3, 1.6, .5, 1) both;
@@ -1040,7 +1045,7 @@ button.notif:hover { background: hsl(0 0% 100% / .22); }
   background: var(--bg);
   color: #fff;
 }
-.tl.done .tl-mark { border-color: var(--ok); background: var(--ok); }
+.tl.done .tl-mark { border-color: var(--ok-solid); background: var(--ok-solid); }
 .tl.now .tl-mark { border: 3px solid var(--due); box-shadow: 0 0 0 4px var(--due-soft); }
 .tl.faded { opacity: .45; }
 .tl-title { font-weight: 600; line-height: 1.35; padding-top: 2px; }
