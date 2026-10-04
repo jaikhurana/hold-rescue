@@ -2,7 +2,8 @@
 // Rendering from state (rather than hand-written markup) keeps every badge, count and
 // amount in step as the hold moves from "on hold" to "under review" to "released".
 import { icon } from './icons.js';
-import { CHAT, E5_LABELS, EVIDENCE, HOLD, HOME, LEDGER, LETTER, MERCHANT, PAST_HOLDS, e5Item, isExchangeDispute } from './case-data.js';
+import { CHAT, E5_LABELS, EVIDENCE, HOLD, HOME, LEDGER, LETTER, MERCHANT, OUTCOME, PAST_HOLDS, STAGES, e5Item, isExchangeDispute, timeline } from './case-data.js';
+import { wordCount } from './statement.js';
 
 export const NOT_IN_PROTOTYPE = 'Not part of this prototype.';
 
@@ -243,7 +244,7 @@ function hold(s) {
         <div><dt>Police station</dt><dd>${HOLD.stationShort}</dd></div>
         <div><dt>Complaint ref.</dt><dd class="mono-ink">${HOLD.complaintRef}</dd></div>
         <div><dt>Complaint filed</dt><dd>${HOLD.complaintFiled}</dd></div>
-        <div><dt>Who complained</dt><dd>${icon('private', 16)}Kept private by law</dd></div>
+        <div><dt>Who complained</dt><dd class="with-ic">${icon("private", 16)}Kept private by law</dd></div>
       </dl>
     </div>
     <footer class="footer">
@@ -490,12 +491,180 @@ function statement(s) {
     </footer>`;
 }
 
-// ───────────── Placeholder for screens built in later milestones ─────────────
+// ───────────── Timer formatting ─────────────
 
-function placeholder(title) {
-  return () => `
-    ${appbar(title)}
-    <div class="body"><div class="card">This screen is built in a later milestone.</div></div>`;
+/** Measured alert-to-submit time in ms, or null if it wasn't measured. */
+export function measuredMs(s) {
+  return s.timer.start && s.timer.end ? s.timer.end - s.timer.start : null;
+}
+
+/** 84 000 → "1:24" */
+export function clock(ms) {
+  const secs = Math.floor(ms / 1000);
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
+
+/** 84 000 → "1 min 24 s" */
+export function inWords(ms) {
+  const secs = Math.floor(ms / 1000);
+  const mins = Math.floor(secs / 60);
+  return mins ? `${mins} min ${secs % 60} s` : `${secs} s`;
+}
+
+// ───────────── 8. Review and submit ─────────────
+
+export const CALL_TIMES = [
+  ['mornings', 'Weekday mornings'],
+  ['evenings', 'Weekday evenings'],
+  ['any', 'Any time'],
+];
+
+function review(s) {
+  const draft = currentDraft(s);
+  const items = EVIDENCE.length + (e5Item(s.e5) ? 1 : 0);
+  const route = [
+    ['You send it from here', 'Case file and statement, in one tap'],
+    ['Our grievance desk files it', 'On the national cyber-crime grievance portal, within 7 days'],
+    ['The investigating officer decides', `${HOLD.stationShort} · within 15 days of filing`],
+  ];
+  return `
+    ${appbar('Review and submit')}
+    <div class="body">
+      <section class="card" aria-labelledby="route-h">
+        <p class="eyebrow" id="route-h">What happens next</p>
+        <ol class="route">
+          ${route.map(([title, sub], i) => `<li><span class="route-n">${i + 1}</span><span><strong>${title}</strong><span>${sub}</span></span></li>`).join('')}
+        </ol>
+      </section>
+      <dl class="card facts" aria-label="What you are sending">
+        <div><dt>Case file</dt><dd>${items} items</dd></div>
+        <div><dt>Statement</dt><dd>${s.lang === 'hi' ? 'Hindi' : 'English'} · <span id="word-count">${wordCount(draft?.text)}</span> words</dd></div>
+        <div><dt>Video call contact</dt><dd>${MERCHANT.videoContact}</dd></div>
+      </dl>
+      <section aria-labelledby="call-h">
+        <h3 class="sec-title" id="call-h">Best time for a video call</h3>
+        <div class="chips call-chips" role="group" aria-labelledby="call-h">
+          ${CALL_TIMES.map(([id, label]) => `<button class="chip" type="button" data-action="call-time" data-arg="${id}" aria-pressed="${s.callTime === id}">${label}</button>`).join('')}
+        </div>
+      </section>
+      <label class="declare">
+        <input type="checkbox" id="declare" data-change="declare"${s.declared ? ' checked' : ''}${s.submitting ? ' disabled' : ''}>
+        <span>I confirm these facts are true. I understand that a false statement is an offence.</span>
+      </label>
+    </div>
+    <footer class="footer">
+      <button class="btn btn-primary btn-block" id="submit" type="button" data-action="submit"${!s.declared || s.submitting ? ' disabled' : ''}>
+        ${s.submitting ? '<span class="spinner" aria-hidden="true"></span>Sending your case file…' : `${icon('send', 18)}Submit response`}
+      </button>
+      <p class="fine-print">Prototype: nothing is actually sent.</p>
+    </footer>`;
+}
+
+// ───────────── 9. Response submitted ─────────────
+
+function submitted(s) {
+  const ms = measuredMs(s);
+  return `
+    <div class="body top-pad">
+      <div class="success">
+        <span class="success-check" aria-hidden="true">${icon('check', 40)}</span>
+        <h2 tabindex="-1">Response submitted</h2>
+        <p>We file it on the national grievance portal and tell you the moment the officer replies. Nobody on your team needs to follow up.</p>
+      </div>
+      ${ms !== null
+        ? `<section class="card time-card" aria-label="Time from alert to submitted">
+             <span class="eyebrow">Alert to submitted</span>
+             <span class="amount">${clock(ms)}</span>
+             <span class="small ${ms <= 120_000 ? 'ok-text' : 'muted'}">${ms <= 120_000 ? 'Under the 2-minute goal' : 'Goal: under 2:00'}</span>
+           </section>`
+        : ''}
+      <dl class="card facts">
+        <div><dt>Reference</dt><dd class="mono-ink">${HOLD.reference}</dd></div>
+        <div><dt>Submitted</dt><dd>${HOLD.submittedOn}</dd></div>
+        <div><dt>Filed on portal by</dt><dd>${HOLD.respondBy}</dd></div>
+        <div><dt>Reminders</dt><dd>On</dd></div>
+      </dl>
+    </div>
+    <footer class="footer">
+      <button class="btn btn-primary btn-block" type="button" data-action="track">Track this hold</button>
+    </footer>`;
+}
+
+// ───────────── 10. Tracker ─────────────
+
+const STATE_LABEL = { done: 'Done', now: 'In progress', next: 'Up next', faded: 'No longer needed' };
+
+function tracker(s) {
+  const ms = measuredMs(s);
+  const items = timeline(s.stage, ms !== null ? inWords(ms) : null);
+  const next = STAGES[s.stage + 1];
+  return `
+    ${appbar(`Hold · ${HOLD.order}`)}
+    <div class="body">
+      <section class="card summary" aria-label="Hold summary">
+        <div class="summary-top"><span class="eyebrow">${s.stage >= 3 ? 'Released' : 'Amount on hold'}</span>${statusBadge(s)}</div>
+        <p class="amount">${HOLD.amount}</p>
+        <p class="small muted with-ic">${icon('police', 16)}${HOLD.stationShort}</p>
+      </section>
+      <ol class="timeline" aria-label="Progress">
+        ${items.map((item) => `
+          <li class="tl ${item.state}">
+            <span class="tl-mark" aria-hidden="true">${item.state === 'done' ? icon('check', 14) : ''}</span>
+            <div class="tl-body">
+              <p class="tl-title">${item.title}<span class="sr-only"> (${STATE_LABEL[item.state]})</span></p>
+              <p class="tl-when">${item.when}</p>
+              ${item.text ? `<p class="tl-text">${item.text}</p>` : ''}
+              ${item.checklist
+                ? `<div class="checklist"><p class="eyebrow">Before the call</p><ul>${item.checklist.map((c) => `<li>${icon('check', 16)}<span>${c}</span></li>`).join('')}</ul></div>`
+                : ''}
+            </div>
+          </li>`).join('')}
+      </ol>
+      <div class="banner info">${icon('bell')}
+        <p><strong>Reminders on</strong> · We alert you before each deadline, so nobody on your team has to keep track.</p>
+      </div>
+      ${next ? `<button class="demo-skip" type="button" data-action="advance">${icon('forward', 16)}Demo · Skip ahead to ${next.date}</button>` : ''}
+    </div>
+    ${s.stage >= 3
+      ? '<footer class="footer"><button class="btn btn-primary btn-block" type="button" data-action="go" data-arg="outcome">See the result</button></footer>'
+      : ''}`;
+}
+
+// ───────────── 11. Outcome ─────────────
+
+function outcome(s) {
+  const ms = measuredMs(s);
+  return `
+    <div class="body top-pad">
+      <div class="success">
+        <span class="success-check" aria-hidden="true">${icon('check', 40)}</span>
+        <h2 tabindex="-1">Hold lifted</h2>
+        <p class="amount ok-text">${HOLD.amount}</p>
+        <p>Back in your settlement on ${OUTCOME.creditedOn}.</p>
+      </div>
+      <dl class="card facts">
+        ${ms !== null ? `<div><dt>Your time on it</dt><dd>${inWords(ms)}</dd></div>` : ''}
+        <div><dt>Days on hold</dt><dd>${OUTCOME.daysOnHold}</dd></div>
+        <div><dt>Released on</dt><dd>${OUTCOME.releasedOn}</dd></div>
+        <div><dt>Lost earlier this year</dt><dd>${LEDGER.lost} on ${LEDGER.lostHolds} holds</dd></div>
+      </dl>
+    </div>
+    <footer class="footer">
+      <button class="btn btn-primary btn-block" type="button" data-action="done">Done</button>
+    </footer>`;
+}
+
+/** An in-app push banner, as the "Payments" app would show it. */
+export function pushBanner(push) {
+  return `
+    <button class="push" type="button" data-action="push-open" data-arg="${push.open}">
+      <span class="app-glyph" aria-hidden="true">₹</span>
+      <span class="notif-text">
+        <span class="notif-meta"><b>Payments</b><span>now</span></span>
+        <strong>${push.title}</strong>
+        <span>${push.body}</span>
+      </span>
+    </button>`;
 }
 
 export const SCREENS = {
@@ -505,10 +674,10 @@ export const SCREENS = {
   hold,
   casefile,
   statement,
-  review: placeholder('Review and submit'),
-  submitted: placeholder('Response submitted'),
-  tracker: placeholder(`Hold · ${HOLD.order}`),
-  outcome: placeholder('Hold lifted'),
+  review,
+  submitted,
+  tracker,
+  outcome,
 };
 
 /** Which presenter-rail step (1–7) a screen belongs to. */

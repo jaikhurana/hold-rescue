@@ -1,8 +1,11 @@
 // Hold Rescue · app state, navigation and demo controls.
 // State lives in memory only; a reload restarts the demo.
-import { evidenceFor } from './case-data.js';
+import { STAGES, evidenceFor } from './case-data.js';
 import { streamDraft } from './draft-client.js';
-import { SCREENS, TONE, NOT_IN_PROTOTYPE, TAG_LABELS, currentDraft, draftKey, sheetBody, sheetFrame, statementParts, stepOf } from './screens.js';
+import {
+  SCREENS, TONE, NOT_IN_PROTOTYPE, TAG_LABELS,
+  clock, currentDraft, draftKey, pushBanner, sheetBody, sheetFrame, statementParts, stepOf,
+} from './screens.js';
 import { cleanDraft, scriptedStatement, typedSlice, wordCount } from './statement.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -28,7 +31,10 @@ const initialState = () => ({
   drafts: {}, // `${lang}|${variant}` → { text, source: 'live'|'scripted'|'edited', model? }
   drafting: null, // the draft in progress: { key, phase: 'waiting'|'streaming'|'typing', text, model, controller? }
   editing: false,
-  timer: { start: null, end: null },
+  callTime: 'mornings',
+  declared: false,
+  submitting: false,
+  timer: { start: null, end: null }, // starts when Hold detail first opens, stops when Submit is tapped
   submitted: false,
   stage: 0, // 0 submitted · 1 filed · 2 call booked · 3 released
   // Presenter settings, kept across Restart:
@@ -289,7 +295,64 @@ function updateStatement() {
   $('#st-source', el).innerHTML = parts.source;
 }
 
+// ───────────── Submit, time and push banners ─────────────
+
+let submitTimer = 0;
+function submit() {
+  if (!s.declared || s.submitting) return;
+  s.timer.end ??= s.timer.start ? Date.now() : null;
+  s.submitting = true;
+  refresh();
+  submitTimer = setTimeout(() => {
+    s.submitting = false;
+    s.submitted = true;
+    s.stack = ['home'];
+    show('submitted');
+  }, 1300);
+}
+
+let pushTimer = 0;
+const pushLayer = $('#push-layer');
+
+function showPush(push) {
+  clearTimeout(pushTimer);
+  pushLayer.innerHTML = pushBanner(push);
+  pushTimer = setTimeout(hidePush, 7000);
+}
+
+function hidePush() {
+  clearTimeout(pushTimer);
+  const banner = pushLayer.firstElementChild;
+  if (!banner) return;
+  banner.classList.add('hiding');
+  setTimeout(() => banner.remove(), reducedMotion.matches ? 0 : 220);
+}
+
+/** Moves the story to the next date after submitting: filed → call booked → released. */
+function advance() {
+  if (!s.submitted || s.stage >= 3) return;
+  s.stage += 1;
+  if (s.screen !== 'lock') refresh();
+  showPush(STAGES[s.stage].push);
+  syncRail();
+}
+
 // ───────────── Presenter rail ─────────────
+
+const timerValue = $('#timer-value');
+const timerFill = $('#timer-fill');
+const timerCard = $('.timer-card');
+const advanceBtn = $('#advance');
+
+function syncTimer() {
+  const ms = s.timer.start ? (s.timer.end ?? Date.now()) - s.timer.start : 0;
+  timerValue.textContent = clock(ms);
+  timerFill.style.width = `${Math.min(ms / 120_000, 1) * 100}%`;
+  timerCard.classList.toggle('over', ms > 120_000);
+}
+setInterval(() => {
+  if (s.timer.start && !s.timer.end) syncTimer();
+}, 250);
 
 function syncRail() {
   const step = stepOf(s);
@@ -299,6 +362,10 @@ function syncRail() {
     if (n === step) btn.setAttribute('aria-current', 'step');
     else btn.removeAttribute('aria-current');
   });
+  const next = STAGES[s.stage + 1];
+  advanceBtn.disabled = !s.submitted || !next;
+  advanceBtn.textContent = !s.submitted ? 'Advance time' : next ? `Advance to ${next.date}` : 'Hold released';
+  syncTimer();
 }
 
 function openRail() {
@@ -390,9 +457,37 @@ const actions = {
     refresh();
   },
 
+  'call-time'(id) {
+    s.callTime = id;
+    refresh();
+  },
+  submit,
+  track() {
+    s.stack = ['home'];
+    show('tracker');
+  },
+  advance,
+  'push-open'(target) {
+    hidePush();
+    if (s.screen !== target) go(target);
+  },
+  done: () => goTab('holds'),
+
   'rail-open': openRail,
   'rail-close': () => closeRail(),
 };
+
+const changes = {
+  declare(el) {
+    s.declared = el.checked;
+    $('#submit').disabled = !s.declared || s.submitting;
+  },
+};
+
+document.addEventListener('change', (event) => {
+  const el = event.target.closest('[data-change]');
+  if (el) changes[el.dataset.change]?.(el);
+});
 
 document.addEventListener('click', (event) => {
   const el = event.target.closest('[data-action]');
