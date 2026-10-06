@@ -262,3 +262,79 @@ export function timeline(stage, sentIn) {
     { title: 'Day 90: the hold must end', state: later, when: 'Sun 3 Jan 2027', text: 'A contested hold lapses unless police get a legal order to extend it.' },
   ];
 }
+
+// ───────────── Follow-up agent ─────────────
+
+// Fixed facts about what happens after the merchant submits. The server builds the agent's
+// prompts from these; the browser never sends any of them. Dates are ISO (YYYY-MM-DD).
+export const AGENT_FACTS = {
+  holdOn: '2026-10-05',
+  grievanceRef: 'GRM/2026/LKO/58213',
+  filedOn: '2026-10-06',
+  officerRequest: "Please share proof of delivery and the customer's messages about the exchange.",
+  callOn: '2026-10-14',
+  callTime: '11:30 AM',
+};
+
+// The two demo stories. Step 0 is "just submitted". Each later step moves the date on and may
+// add events; the rules in agent.js decide what the agent proposes at each step.
+const FILED_PUSH = {
+  title: 'Grievance filed',
+  body: 'Your response on KK-2417 is on the national grievance portal. The officer has 15 days to decide.',
+  open: 'tracker',
+};
+export const SCENARIOS = {
+  responds: [
+    { on: '2026-10-05' },
+    { on: '2026-10-06', events: [{ type: 'filed' }], push: FILED_PUSH },
+    { on: '2026-10-09', events: [{ type: 'officer_request' }] },
+    { on: '2026-10-12', events: [{ type: 'call_booked', callOn: AGENT_FACTS.callOn, callTime: AGENT_FACTS.callTime }] },
+    { on: '2026-10-16', events: [{ type: 'released' }] },
+  ],
+  quiet: [
+    { on: '2026-10-05' },
+    { on: '2026-10-06', events: [{ type: 'filed' }], push: FILED_PUSH },
+    { on: '2026-10-22' },
+    { on: '2026-11-06', push: { title: 'Still waiting on KK-2417', body: 'No direction yet. Your agent is watching Day 75 and Day 90.', open: 'tracker' } },
+    { on: '2027-01-03' },
+    { on: '2027-01-05', events: [{ type: 'released' }] },
+  ],
+};
+
+// How each kind of agent work is named across the app.
+export const AGENT_COPY = {
+  officer_reply: {
+    title: 'Reply to the officer',
+    ready: 'Your reply to the officer is ready',
+    badge: 'Reply ready',
+    drafted: 'Drafted a reply to the officer',
+    sentTo: 'the investigating officer',
+    via: 'via the grievance portal',
+    push: { title: 'Officer asked for delivery proof', body: 'Your reply is ready. Tap to review.' },
+  },
+  call_brief: {
+    title: 'Your call brief',
+    ready: 'Your call brief is ready',
+    badge: 'Brief ready',
+    drafted: 'Prepared your call brief',
+    push: { title: 'Video call on Wed 14 Oct', body: 'Your 1-minute brief is ready.' },
+  },
+  escalation: {
+    title: 'Request for review',
+    ready: 'Your request for review is ready',
+    badge: 'Review ready',
+    drafted: 'Drafted a request for review by the District Grievance Officer',
+    sentTo: 'the District Grievance Officer',
+    via: 'via the grievance portal',
+    push: { title: 'No decision in 15 days', body: 'Your request for review is ready.' },
+  },
+  release_request: {
+    title: 'Release request',
+    ready: 'Your release request is ready',
+    badge: 'Release request ready',
+    drafted: 'Drafted a request to lift the hold under the 90-day limit',
+    sentTo: 'our grievance desk, copied to the officer',
+    via: '',
+    push: { title: 'Day 90 reached', body: 'Your release request is ready.' },
+  },
+};
