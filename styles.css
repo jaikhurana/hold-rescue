@@ -1074,6 +1074,98 @@ button.notif:hover { background: hsl(0 0% 100% / .22); }
 }
 .demo-skip:hover { border-color: var(--primary); color: var(--primary-text); }
 
+/* ───────────── Follow-up agent ───────────── */
+.agent-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.agent-card.needs { border-color: color-mix(in srgb, var(--primary) 45%, var(--line)); box-shadow: 0 0 0 3px var(--primary-soft); }
+.agent-head { display: flex; align-items: center; gap: 10px; }
+.agent-head h3 { flex: 1; font: 600 14.5px/1.3 var(--font-display); }
+.agent-ic { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; background: var(--primary-soft); color: var(--primary-text); }
+.badge.neutral { background: var(--surface-2); color: var(--ink-2); }
+.agent-title { font: 600 16px/1.3 var(--font-display); }
+.agent-why { color: var(--ink-2); font-size: 13.5px; }
+.agent-letter { box-shadow: none; padding: 14px; background: var(--bg); }
+.agent-letter .letter-text { min-height: 90px; font-size: 14px; }
+.agent-due { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.agent-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.agent-tools .agent-approve { flex: 1 1 100%; }
+.agent-tools .btn-text { margin-left: auto; }
+.agent-line { font-weight: 600; }
+.agent-done { display: flex; align-items: center; gap: 8px; color: var(--ok-text); font-weight: 600; }
+.agent-done .ic { flex: none; }
+.agent-waiting { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--due-soft); font-size: 13px; color: var(--ink-2); }
+.agent-waiting > span { flex: 1; }
+.agent-waiting .ic { flex: none; color: var(--due-text); }
+.watch { display: grid; gap: 0; padding: 0; list-style: none; }
+.watch li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 13px; color: var(--ink-2); }
+.watch li + li { border-top: 1px dashed var(--line); }
+.watch strong { flex: none; font-weight: 600; color: var(--ink); }
+.link-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-text);
+}
+.link-btn:hover { text-decoration: underline; }
+
+.agent-brief { padding: 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
+.brief { display: flex; flex-direction: column; gap: 8px; }
+.brief[lang="hi"] { font-family: "Mukta", var(--font-text); }
+.brief-title { display: flex; gap: 8px; align-items: flex-start; font-weight: 600; }
+.brief-title .ic { flex: none; margin-top: 2px; color: var(--primary-text); }
+.brief-keep { font-size: 13.5px; color: var(--ink-2); }
+.brief-qs { display: grid; gap: 10px; margin: 0; padding-left: 20px; }
+.brief-qs li { padding-left: 2px; }
+.brief-qs strong { display: block; font-weight: 600; }
+.brief-qs span { font-size: 13.5px; color: var(--ink-2); line-height: 1.6; }
+.brief-tip { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--primary-soft); font-size: 13.5px; }
+.brief-tip .ic { flex: none; color: var(--primary-text); }
+
+.log { display: grid; margin: 8px 0 0; padding: 0; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.log-row { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: start; padding: 10px 12px; font-size: 13px; }
+.log-row + .log-row { border-top: 1px solid var(--line); }
+.log-ic { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); }
+.log-row.agent .log-ic { background: var(--primary-soft); color: var(--primary-text); }
+.log-row.officer .log-ic { background: var(--due-soft); color: var(--due-text); }
+.log-row.you .log-ic { background: var(--ok-soft); color: var(--ok-text); }
+.log-text { padding-top: 4px; color: var(--ink-2); }
+.log-when { padding-top: 4px; font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.tl.missed .tl-mark { border: 2px solid var(--due); background: var(--due-soft); color: var(--due-text); font: 800 13px/1 var(--font-text); }
+.tl.missed .tl-when { color: var(--due-text); }
+
+.alert-card.action { border-color: color-mix(in srgb, var(--primary) 40%, var(--line)); background: linear-gradient(var(--primary-soft), var(--primary-soft)), var(--surface); }
+.alert-card.action .alert-ic { background: hsl(218 89% 51%); color: #fff; }
+.alert-card.action .eyebrow { color: var(--primary-text); }
+
+.sheet-sub { margin-top: 2px; font: 700 11px/1.3 var(--font-text); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.can-list { display: grid; gap: 8px; margin: -6px 0 0; padding: 0; list-style: none; }
+.can-list li { display: flex; gap: 10px; align-items: center; }
+.can-list .ic { flex: none; color: var(--ok-text); }
+.can-list.cant .ic { color: var(--hold-text); }
+.locked-toggle { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.lt-text { flex: 1; display: flex; flex-direction: column; }
+.lt-text span { font-size: 12.5px; color: var(--muted); }
+.switch { position: relative; flex: none; width: 46px; height: 28px; border-radius: 14px; background: var(--line-2); opacity: .8; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px hsl(0 0% 0% / .2); }
+.switch .ic { position: absolute; right: 7px; top: 7px; color: var(--surface); }
+
+.scenario-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+
 /* ───────────── Push banner ───────────── */
 .push-layer { position: absolute; left: 8px; right: 8px; top: calc(var(--top) + 4px); z-index: 70; }
 .push {

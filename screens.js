@@ -1,9 +1,12 @@
 // One render function per screen. Each takes the app state and returns HTML.
 // Rendering from state (rather than hand-written markup) keeps every badge, count and
-// amount in step as the hold moves from "on hold" to "under review" to "released".
+// amount in step as the hold moves from "on hold" to "under review", "action ready" and "released".
 import { icon } from './icons.js';
-import { CHAT, E5_LABELS, EVIDENCE, HOLD, HOME, LEDGER, LETTER, MERCHANT, OUTCOME, PAST_HOLDS, STAGES, e5Item, isExchangeDispute, timeline } from './case-data.js';
-import { wordCount } from './statement.js';
+import { activity, addDays, evaluate, fmtDate, outcome as outcomeOf, timeline } from './agent.js';
+import {
+  AGENT_COPY, AGENT_LETTERS, CALL_BRIEF, CHAT, E5_LABELS, EVIDENCE, HOLD, HOME, LEDGER, LETTER, MERCHANT, PAST_HOLDS, SCENARIOS, e5Item, isExchangeDispute,
+} from './case-data.js';
+import { parseCallBrief, wordCount } from './statement.js';
 
 export const NOT_IN_PROTOTYPE = 'Not part of this prototype.';
 
@@ -14,9 +17,19 @@ export function esc(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 
-/** 'hold' before the merchant responds, 'review' after, 'released' once police lift it. */
+/** The story's date: the current step of the chosen scenario (Mon 5 Oct 2026 until time moves). */
+export const storyNow = (s) => SCENARIOS[s.scenario][s.step].on;
+
+/** What the follow-up agent sees right now (see agent.js). */
+export const agentView = (s) => evaluate(s.case, storyNow(s));
+
+/** The first agent proposal still waiting for the merchant, if any. */
+export const waitingProposal = (s) => (s.submitted ? (agentView(s).proposals[0] ?? null) : null);
+
+/** 'hold' before the merchant responds, 'review' after, 'action' while the agent needs an OK, 'released' at the end. */
 export function holdState(s) {
-  if (s.stage >= 3) return 'released';
+  if (s.submitted && agentView(s).released) return 'released';
+  if (waitingProposal(s)) return 'action';
   return s.submitted ? 'review' : 'hold';
 }
 
@@ -45,7 +58,7 @@ function tabbar(s, active) {
           ([id, label, ic]) => `
         <button class="tab" type="button" data-action="tab" data-arg="${id}"${id === active ? ' aria-current="page"' : ''}>
           ${icon(ic, 22)}<span>${label}</span>
-          ${id === 'holds' && !s.submitted ? '<span class="count"><span class="sr-only">, </span>1<span class="sr-only"> needs action</span></span>' : ''}
+          ${id === 'holds' && (!s.submitted || waitingProposal(s)) ? '<span class="count"><span class="sr-only">, </span>1<span class="sr-only"> needs action</span></span>' : ''}
         </button>`,
         )
         .join('')}
@@ -87,10 +100,18 @@ function lock() {
 
 function alertCard(s) {
   const state = holdState(s);
+  const waiting = waitingProposal(s);
+  const released = outcomeOf(s.case);
   const copy = {
+    action: waiting && {
+      ic: 'spark',
+      eyebrow: 'Action ready',
+      title: AGENT_COPY[waiting.type].ready,
+      sub: waiting.type === 'call_brief' ? 'Tap to review' : 'Tap to review and send',
+    },
     hold: { ic: 'lock', eyebrow: `Action needed · ${HOLD.daysLeft} days left`, title: `${HOLD.amount} on hold after a cyber-fraud report`, sub: `Order ${HOLD.order} · respond by ${HOLD.respondBy}` },
     review: { ic: 'clock', eyebrow: 'Under review', title: `Your response on ${HOLD.amount} is filed`, sub: `Order ${HOLD.order} · we’ll tell you when the officer replies` },
-    released: { ic: 'checkCircle', eyebrow: 'Hold lifted', title: `${HOLD.amount} is back in your settlement`, sub: `Order ${HOLD.order} · added on Sat 17 Oct` },
+    released: released && { ic: 'checkCircle', eyebrow: 'Hold lifted', title: `${HOLD.amount} is back in your settlement`, sub: `Order ${HOLD.order} · added on ${fmtDate(released.creditedOn)}` },
   }[state];
   return `
     <button class="alert-card ${state}" type="button" data-action="open-hold">
@@ -122,7 +143,7 @@ function home(s) {
           </div>
           <button class="icon-btn" type="button" data-action="na" aria-label="Notifications">${icon('bell', 22)}</button>
         </div>
-        <p class="hero-label">Next settlement · ${HOME.nextSettlement[s.stage]}</p>
+        <p class="hero-label">Next settlement · ${fmtDate(addDays(storyNow(s), 1))}</p>
         <p class="amount">${HOME.settlement}</p>
         <span class="hero-chip">
           <span class="dot ${released ? 'ok' : 'hold'}" aria-hidden="true"></span>
@@ -165,7 +186,9 @@ function home(s) {
 }
 
 function statusBadge(s) {
-  const [cls, label] = { hold: ['neg', 'On hold'], review: ['notice', 'Under review'], released: ['pos', 'Released'] }[holdState(s)];
+  const state = holdState(s);
+  if (state === 'action') return `<span class="badge info">${AGENT_COPY[waitingProposal(s).type].badge}</span>`;
+  const [cls, label] = { hold: ['neg', 'On hold'], review: ['notice', 'Under review'], released: ['pos', 'Released'] }[state];
   return `<span class="badge ${cls}">${label}</span>`;
 }
 
@@ -211,13 +234,17 @@ function holds(s) {
 
 // ───────────── 4. Hold detail ─────────────
 
+/** The banner on Hold detail once the merchant has responded, following the case. */
+function afterSubmit(s) {
+  const { deadlines: d, released } = agentView(s);
+  if (released) return [`Hold lifted on ${fmtDate(d.releasedOn)}`, `${HOLD.amount} is added to your settlement on ${fmtDate(addDays(d.releasedOn, 1))}.`];
+  if (d.escalatedOn) return ['Review requested', `You asked the District Grievance Officer for a review on ${fmtDate(d.escalatedOn)}. Your follow-up agent is watching Day 90.`];
+  if (d.filedOn) return ['Filed on the national grievance portal', `The officer decides by ${fmtDate(d.officerDueOn)}. Your follow-up agent is watching every deadline.`];
+  return ['Response submitted', `We file it on the national grievance portal by ${HOLD.respondBy} and tell you when the officer replies.`];
+}
+
 function hold(s) {
-  const after = [
-    ['Response submitted', `We file it on the national grievance portal by ${HOLD.respondBy} and tell you when the officer replies.`],
-    ['Filed on the national grievance portal', 'The officer decides by Wed 21 Oct. We tell you the moment they reply.'],
-    ['Filed on the national grievance portal', 'Video call booked for Wed 14 Oct, 11:30 AM. We remind you 30 minutes before.'],
-    ['Hold lifted on Fri 16 Oct', `${HOLD.amount} is added to your settlement on ${OUTCOME.creditedOn}.`],
-  ][s.stage];
+  const after = afterSubmit(s);
   const deadline = s.submitted
     ? `<div class="banner pos">${icon('checkCircle')}
          <p><strong>${after[0]}</strong><br>${after[1]}</p>
@@ -232,7 +259,7 @@ function hold(s) {
     ${appbar('Payment on hold')}
     <div class="body">
       <section class="card summary" aria-label="Hold summary">
-        <div class="summary-top"><span class="eyebrow">${s.stage >= 3 ? 'Released' : 'Amount on hold'}</span>${statusBadge(s)}</div>
+        <div class="summary-top"><span class="eyebrow">${holdState(s) === 'released' ? 'Released' : 'Amount on hold'}</span>${statusBadge(s)}</div>
         <p class="amount">${HOLD.amount}</p>
         <p class="small muted">Order ${HOLD.order} · held from your settlement on ${HOLD.placedOn}</p>
       </section>
@@ -345,13 +372,13 @@ function casefile(s) {
 
 // ───────────── 6. "Add from your phone" sheet ─────────────
 
-export function sheetFrame() {
+export function sheetFrame(title) {
   return `
     <div class="sheet-scrim" data-action="sheet-close"></div>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
       <div class="sheet-head">
         <span class="grabber" aria-hidden="true"></span>
-        <h2 id="sheet-title" tabindex="-1">Add from your phone</h2>
+        <h2 id="sheet-title" tabindex="-1">${title}</h2>
         <button class="icon-btn" type="button" data-action="sheet-close" aria-label="Close">${icon('close', 22)}</button>
       </div>
       <div class="sheet-body" id="sheet-body"></div>
@@ -597,42 +624,206 @@ function submitted(s) {
     </footer>`;
 }
 
-// ───────────── 10. Tracker ─────────────
+// ───────────── 10. Tracker and the follow-up agent ─────────────
 
-const STATE_LABEL = { done: 'Done', now: 'In progress', next: 'Up next', faded: 'No longer needed' };
+const STATE_LABEL = { done: 'Done', now: 'In progress', next: 'Up next', missed: 'Deadline passed', faded: 'No longer needed' };
+const ALL_TAGS = new Set(['E1', 'E2', 'E3', 'E4', 'E5']);
+
+const SOURCE = {
+  drafting: (model) => `<p class="source live"><span class="live-dot" aria-hidden="true"></span>Drafting live with ${model} · open model</p>`,
+  live: (model) => `<p class="source live">${icon('checkCircle', 16)}Drafted live by ${model} · open model</p>`,
+  scripted: () => `<p class="source scripted">${icon('file', 16)}Standard draft</p>`,
+  edited: () => `<p class="source edited">${icon('edit', 16)}Edited by you</p>`,
+};
+
+/** The proposal the agent card shows: the one the merchant opened, else the first one not put off. */
+export function focusedProposal(s) {
+  if (!s.submitted) return null;
+  const { proposals } = agentView(s);
+  return proposals.find((p) => p.id === s.agentFocus) ?? proposals.find((p) => !p.snoozed) ?? null;
+}
+
+/** The call brief: fixed questions (chosen by the rules), answers and tip (written by AI or the template). */
+function briefHtml(text, lang) {
+  const copy = CALL_BRIEF[lang] ?? CALL_BRIEF.en;
+  const parts = parseCallBrief(text, ALL_TAGS);
+  if (!parts) return `<p>${esc(text).replace(/\n/g, '<br>')}</p>`;
+  return `
+    <div class="brief" lang="${lang}">
+      <p class="brief-title">${icon('video', 18)}<span>${copy.title}</span></p>
+      <p class="brief-keep">${copy.keep}</p>
+      <p class="eyebrow">${copy.questionsLabel}</p>
+      <ol class="brief-qs">
+        ${copy.questions.map((q, i) => `<li><strong>${q}</strong><span>${withTags(parts[`a${i + 1}`])}</span></li>`).join('')}
+      </ol>
+      <p class="brief-tip">${icon('info', 18)}<span>${esc(parts.tip)}</span></p>
+    </div>`;
+}
+
+/** The parts of the agent card that change while a draft streams, rendered separately. */
+export function agentParts(s, p) {
+  const job = s.agentJobs[p.id];
+  const draft = s.agentDrafts[p.id];
+  const editing = s.agentEditing === p.id;
+  const sending = s.agentSending === p.id;
+  const busy = Boolean(job) || editing || sending || !draft;
+  const lang = draft?.lang ?? s.lang;
+
+  const source = job ? SOURCE.drafting(job.model) : draft ? SOURCE[draft.source](draft.model) : '';
+  let text = '';
+  if (editing) {
+    text = `<label class="sr-only" for="ag-edit">Edit the draft</label><textarea id="ag-edit" class="edit-area" spellcheck="true">${esc(draft.text)}</textarea>`;
+  } else if (job && !job.text) {
+    text = '<p class="drafting-note"><span class="spinner" aria-hidden="true"></span>Drafting from your case file…</p>';
+  } else if (job) {
+    text = p.type === 'call_brief' ? `<p>${esc(job.text).replace(/\n/g, '<br>')}<span class="caret" aria-hidden="true"></span></p>` : `<p>${withTags(job.text)}<span class="caret" aria-hidden="true"></span></p>`;
+  } else if (draft) {
+    text = p.type === 'call_brief' ? briefHtml(draft.text, lang) : `<p>${withTags(draft.text)}</p>`;
+  }
+
+  const off = busy ? ' disabled' : '';
+  const primary = p.type === 'call_brief' ? `${icon('check', 18)}Got it` : `${icon('send', 18)}Approve and send`;
+  const tools = editing
+    ? `<button class="chip" type="button" data-action="agent-edit-done" data-arg="${p.id}">${icon('check', 16)}Done</button>`
+    : `<button class="btn btn-primary agent-approve" type="button" data-action="agent-approve" data-arg="${p.id}"${off}>${sending ? '<span class="spinner" aria-hidden="true"></span>Sending…' : primary}</button>
+       ${p.type === 'call_brief' ? '' : `<button class="chip" type="button" data-action="agent-edit" data-arg="${p.id}"${off}>${icon('edit', 16)}Edit</button>`}
+       <button class="btn btn-text" type="button" data-action="agent-later" data-arg="${p.id}"${off}>Not now</button>`;
+  return { source, text, tools, busy, lang };
+}
+
+const DUE = {
+  officer_reply: (p) => `Reply by ${fmtDate(p.dueBy)}`,
+  call_brief: () => 'Read it before the call',
+  escalation: (p) => `Send by ${fmtDate(p.dueBy)}`,
+  release_request: (p) => `Send by ${fmtDate(p.dueBy)}`,
+};
+
+function agentCard(s) {
+  const view = agentView(s);
+  const now = storyNow(s);
+  const p = focusedProposal(s);
+  const head = (cls, label) => `
+    <div class="agent-head">
+      <span class="agent-ic" aria-hidden="true">${icon('spark', 18)}</span>
+      <h3 id="agent-h">Follow-up agent</h3>
+      <span class="badge ${cls}">${label}</span>
+    </div>`;
+  const canDo = `<button class="link-btn" type="button" data-action="agent-sheet">${icon('shield', 16)}What the agent can do</button>`;
+
+  if (p) {
+    const parts = agentParts(s, p);
+    const letter = AGENT_LETTERS[p.type]?.[parts.lang];
+    const body = p.type === 'call_brief'
+      ? `<div class="agent-brief" id="ag-text">${parts.text}</div>`
+      : `<article class="letter agent-letter" lang="${parts.lang}" aria-label="Draft message">
+           <p class="letter-to">${letter.to}</p>
+           <p class="letter-re">${letter.re}</p>
+           <div class="letter-text" id="ag-text" aria-busy="${parts.busy}">${parts.text}</div>
+           <p class="letter-sign">${LETTER[parts.lang].sign}</p>
+         </article>`;
+    return `
+      <section class="agent-card needs" aria-labelledby="agent-h">
+        ${head('info', p.reminder ? 'Reminder · needs your OK' : 'Needs your OK')}
+        <h4 class="agent-title">${AGENT_COPY[p.type].title}</h4>
+        <p class="agent-why">${esc(p.why)}</p>
+        <div id="ag-source">${parts.source}</div>
+        ${body}
+        <p class="agent-due">${icon('clock', 16)}${DUE[p.type](p)}${p.type === 'call_brief' ? '' : ' · nothing is sent until you approve'}</p>
+        <div class="agent-tools" id="ag-tools">${parts.tools}</div>
+        ${view.proposals.filter((x) => x.id !== p.id).map((x) => `
+          <p class="agent-waiting">${icon('clock', 16)}<span>Also waiting: ${AGENT_COPY[x.type].title.toLowerCase()}</span>
+            <button class="link-btn" type="button" data-action="agent-review" data-arg="${x.id}">Review</button>
+          </p>`).join('')}
+        ${canDo}
+      </section>`;
+  }
+
+  const done = [...s.case.actions].reverse().find((a) => a.on === now && (a.status === 'sent' || a.status === 'acknowledged'));
+  const waiting = view.proposals.filter((x) => x.snoozed);
+  const doneLine = done
+    ? `<p class="agent-done">${icon('checkCircle', 18)}<span>${done.status === 'acknowledged' ? 'Brief read' : `Sent to ${AGENT_COPY[done.type].sentTo}`} · ${fmtDate(done.on)}</span></p>`
+    : '';
+  const watching = view.released
+    ? '<p class="agent-line">The hold is lifted. Nothing left to watch.</p>'
+    : `<p class="agent-line">I'm watching ${view.watch.length} date${view.watch.length === 1 ? '' : 's'} for you</p>
+       <ul class="watch">${view.watch.map((w) => `<li><span>${w.label}</span><strong>${fmtDate(w.on)}${w.time ? `, ${w.time}` : ''}</strong></li>`).join('')}</ul>`;
+  return `
+    <section class="agent-card" aria-labelledby="agent-h">
+      ${head(done || view.released ? 'pos' : 'neutral', done || view.released ? 'Done' : 'Watching')}
+      ${doneLine}
+      ${watching}
+      ${waiting.map((w) => `
+        <p class="agent-waiting">${icon('clock', 16)}<span>Waiting for you: ${AGENT_COPY[w.type].title.toLowerCase()}</span>
+          <button class="link-btn" type="button" data-action="agent-review" data-arg="${w.id}">Review</button>
+        </p>`).join('')}
+      ${canDo}
+    </section>`;
+}
+
+const ACTORS = { agent: ['spark', 'Agent'], you: ['user', 'You'], officer: ['police', 'Officer'], system: ['send', 'Portal'] };
+
+function activityLog(s) {
+  const rows = activity(s.case, storyNow(s));
+  return `
+    <section aria-labelledby="log-h">
+      <h3 class="sec-title" id="log-h">What your agent did</h3>
+      <ol class="log">
+        ${rows.map((r) => `
+          <li class="log-row ${r.actor}">
+            <span class="log-ic">${icon(ACTORS[r.actor][0], 15)}<span class="sr-only">${ACTORS[r.actor][1]}:</span></span>
+            <span class="log-text">${esc(r.text)}</span>
+            <time class="log-when">${fmtDate(r.on)}</time>
+          </li>`).join('')}
+      </ol>
+    </section>`;
+}
+
+/** Body of the "What the agent can do" sheet. */
+export function agentSheetBody() {
+  const can = ['Watch your deadlines', 'Draft replies', 'Prepare call briefs'];
+  const cant = ['Send anything without your OK', 'Contact your customer', 'Promise an outcome'];
+  return `
+    <p class="intro">After you submit, your follow-up agent keeps the case moving. Rules decide when to act, AI drafts the words, and you decide what is sent.</p>
+    <h3 class="sheet-sub">Can</h3>
+    <ul class="can-list">${can.map((t) => `<li>${icon('check', 18)}<span>${t}</span></li>`).join('')}</ul>
+    <h3 class="sheet-sub">Can't</h3>
+    <ul class="can-list cant">${cant.map((t) => `<li>${icon('close', 18)}<span>${t}</span></li>`).join('')}</ul>
+    <div class="locked-toggle">
+      <span class="lt-text"><strong>Send without asking</strong><span>Off in this version</span></span>
+      <span class="switch" role="switch" aria-checked="false" aria-disabled="true" aria-label="Send without asking: off in this version">${icon('lock', 13)}</span>
+    </div>`;
+}
 
 function tracker(s) {
   const ms = measuredMs(s);
-  const items = timeline(s.stage, ms !== null ? inWords(ms) : null);
-  const next = STAGES[s.stage + 1];
+  const now = storyNow(s);
+  const { released } = agentView(s);
+  const items = timeline(s.case, now, ms !== null ? inWords(ms) : null);
+  const next = SCENARIOS[s.scenario][s.step + 1];
   return `
     ${appbar(`Hold · ${HOLD.order}`)}
     <div class="body">
+      ${agentCard(s)}
       <section class="card summary" aria-label="Hold summary">
-        <div class="summary-top"><span class="eyebrow">${s.stage >= 3 ? 'Released' : 'Amount on hold'}</span>${statusBadge(s)}</div>
+        <div class="summary-top"><span class="eyebrow">${released ? 'Released' : 'Amount on hold'}</span>${statusBadge(s)}</div>
         <p class="amount">${HOLD.amount}</p>
-        <p class="small muted with-ic">${icon('police', 16)}${HOLD.stationShort}</p>
+        <p class="small muted with-ic">${icon('police', 16)}${HOLD.stationShort} · as of ${fmtDate(now)}</p>
       </section>
       <ol class="timeline" aria-label="Progress">
         ${items.map((item) => `
           <li class="tl ${item.state}">
-            <span class="tl-mark" aria-hidden="true">${item.state === 'done' ? icon('check', 14) : ''}</span>
+            <span class="tl-mark" aria-hidden="true">${item.state === 'done' ? icon('check', 14) : item.state === 'missed' ? '!' : ''}</span>
             <div class="tl-body">
               <p class="tl-title">${item.title}<span class="sr-only"> (${STATE_LABEL[item.state]})</span></p>
               <p class="tl-when">${item.when}</p>
               ${item.text ? `<p class="tl-text">${item.text}</p>` : ''}
-              ${item.checklist
-                ? `<div class="checklist"><p class="eyebrow">Before the call</p><ul>${item.checklist.map((c) => `<li>${icon('check', 16)}<span>${c}</span></li>`).join('')}</ul></div>`
-                : ''}
             </div>
           </li>`).join('')}
       </ol>
-      <div class="banner info">${icon('bell')}
-        <p><strong>Reminders on</strong> · We alert you before each deadline, so nobody on your team has to keep track.</p>
-      </div>
-      ${next ? `<button class="demo-skip" type="button" data-action="advance">${icon('forward', 16)}Demo · Skip ahead to ${next.date}</button>` : ''}
+      ${activityLog(s)}
+      ${next ? `<button class="demo-skip" type="button" data-action="advance">${icon('forward', 16)}Demo · Skip ahead to ${fmtDate(next.on)}</button>` : ''}
     </div>
-    ${s.stage >= 3
+    ${released
       ? '<footer class="footer"><button class="btn btn-primary btn-block" type="button" data-action="go" data-arg="outcome">See the result</button></footer>'
       : ''}`;
 }
@@ -641,18 +832,20 @@ function tracker(s) {
 
 function outcome(s) {
   const ms = measuredMs(s);
+  const result = outcomeOf(s.case);
+  const sent = s.case.actions.filter((a) => a.status === 'sent').length;
   return `
     <div class="body top-pad">
       <div class="success">
         <span class="success-check" aria-hidden="true">${icon('check', 40)}</span>
         <h2 tabindex="-1">Hold lifted</h2>
         <p class="amount ok-text">${HOLD.amount}</p>
-        <p>Back in your settlement on ${OUTCOME.creditedOn}.</p>
+        ${result ? `<p>Back in your settlement on ${fmtDate(result.creditedOn)}.</p>` : ''}
       </div>
       <dl class="card facts">
         ${ms !== null ? `<div><dt>Your time on it</dt><dd>${inWords(ms)}</dd></div>` : ''}
-        <div><dt>Days on hold</dt><dd>${OUTCOME.daysOnHold}</dd></div>
-        <div><dt>Released on</dt><dd>${OUTCOME.releasedOn}</dd></div>
+        ${result ? `<div><dt>Days on hold</dt><dd>${result.days}</dd></div><div><dt>Released on</dt><dd>${fmtDate(result.releasedOn, { year: true })}</dd></div>` : ''}
+        ${sent ? `<div><dt>Follow-ups sent with your OK</dt><dd>${sent}</dd></div>` : ''}
         <div><dt>Lost earlier this year</dt><dd>${LEDGER.lost} on ${LEDGER.lostHolds} holds</dd></div>
       </dl>
     </div>
@@ -689,6 +882,6 @@ export const SCREENS = {
 
 /** Which presenter-rail step (1–7) a screen belongs to. */
 export function stepOf(s) {
-  const map = { lock: 1, home: 1, holds: 2, hold: 2, casefile: s.sheet ? 4 : 3, statement: 5, review: 6, submitted: 7, tracker: 7, outcome: 7 };
+  const map = { lock: 1, home: 1, holds: 2, hold: 2, casefile: s.sheet?.kind === 'evidence' ? 4 : 3, statement: 5, review: 6, submitted: 7, tracker: 7, outcome: 7 };
   return map[s.screen] ?? 1;
 }

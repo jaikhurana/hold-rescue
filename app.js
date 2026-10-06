@@ -1,12 +1,13 @@
 // Hold Rescue · app state, navigation and demo controls.
 // State lives in memory only; a reload restarts the demo.
-import { STAGES, evidenceFor } from './case-data.js';
+import { addDays, evaluate, fmtDate, newCase, withAction, withEvents } from './agent.js';
+import { AGENT_COPY, AGENT_TAGS, SCENARIOS, evidenceFor } from './case-data.js';
 import { streamDraft } from './draft-client.js';
 import {
   SCREENS, TONE, NOT_IN_PROTOTYPE, TAG_LABELS,
-  clock, currentDraft, draftKey, pushBanner, sheetBody, sheetFrame, statementParts, stepOf,
+  agentParts, agentSheetBody, agentView, clock, currentDraft, draftKey, focusedProposal, pushBanner, sheetBody, sheetFrame, statementParts, stepOf, storyNow,
 } from './screens.js';
-import { cleanDraft, scriptedStatement, typedSlice, wordCount } from './statement.js';
+import { cleanCallBrief, cleanDraft, scriptedAgentDraft, scriptedStatement, typedSlice, wordCount } from './statement.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -21,7 +22,7 @@ const demoPill = $('.demo-pill');
 const initialState = () => ({
   screen: 'lock',
   stack: [], // back stack of screen names
-  sheet: null, // evidence sheet: { view: 'pick'|'reading'|'read'|'tag', url? }
+  sheet: null, // open sheet: { kind: 'evidence', view: 'pick'|'reading'|'read'|'tag', url? } or { kind: 'agent' }
   e5: null, // null | { kind: 'chat' } | { kind: 'tag', tag }. Only this shape is ever sent to the server.
   upload: null, // { url } for a real image the merchant picked; stays in the browser as an object URL
   caseRevealed: false, // the case file staggers in only the first time
@@ -36,7 +37,16 @@ const initialState = () => ({
   submitting: false,
   timer: { start: null, end: null }, // starts when Hold detail first opens, stops when Submit is tapped
   submitted: false,
-  stage: 0, // 0 submitted · 1 filed · 2 call booked · 3 released
+  // After submitting: the story moves through the chosen scenario's steps (case-data.js), and the
+  // follow-up agent's rules (agent.js) read the case to decide what to propose.
+  step: 0,
+  case: newCase(),
+  agentDrafts: {}, // proposal id → { text, source: 'live'|'scripted'|'edited', model?, lang, announce? }
+  agentJobs: {}, // proposal id → the draft in progress: { phase, text, model, controller }
+  agentEditing: null, // proposal id being edited
+  agentSending: null, // proposal id being "sent"
+  agentFocus: null, // a put-off proposal the merchant chose to review
+  scenario: 'responds', // presenter setting, kept across Restart: 'responds' | 'quiet'
   // Presenter settings, kept across Restart:
   aiMode: 'live', // 'live' | 'scripted'
   health: { ai: null, model: 'gpt-oss-120b' },
@@ -81,6 +91,7 @@ function afterShow(name) {
   if (name === 'hold' && !s.timer.start) s.timer.start = Date.now();
   if (name === 'casefile') s.caseRevealed = true;
   if (name === 'statement' && !currentDraft(s) && !s.drafting) startDraft();
+  if (name === 'tracker') prepareAgentDrafts();
 }
 
 function go(name) {
@@ -133,13 +144,14 @@ const fileInput = $('#file-input');
 let sheetReturnFocus = null;
 let readTimer = 0;
 
-function openSheet() {
+function openSheet(kind = 'evidence') {
   sheetReturnFocus = document.activeElement;
-  s.sheet = { view: 'pick' };
-  sheetRoot.innerHTML = sheetFrame();
+  s.sheet = { kind };
+  sheetRoot.innerHTML = sheetFrame(kind === 'agent' ? 'What the agent can do' : 'Add from your phone');
   sheetRoot.classList.add('open');
   currentScreen().inert = true;
-  setSheetView('pick');
+  if (kind === 'agent') $('#sheet-body').innerHTML = agentSheetBody();
+  else setSheetView('pick');
   $('#sheet-title').focus({ preventScroll: true });
   syncRail();
 }
@@ -189,7 +201,7 @@ function addE5(e5, upload = null) {
 fileInput.addEventListener('change', () => {
   const file = fileInput.files?.[0];
   fileInput.value = '';
-  if (!file || !s.sheet) return;
+  if (!file || s.sheet?.kind !== 'evidence') return;
   if (!file.type.startsWith('image/')) {
     toast('Pick an image, like a screenshot.');
     return;
@@ -310,7 +322,7 @@ function submit() {
   refresh();
   submitTimer = setTimeout(() => {
     s.submitting = false;
-    s.submitted = true;
+    markSubmitted();
     s.stack = ['home'];
     show('submitted');
   }, 1300);
@@ -333,13 +345,152 @@ function hidePush() {
   setTimeout(() => banner.remove(), reducedMotion.matches ? 0 : 220);
 }
 
-/** Moves the story to the next date after submitting: filed → call booked → released. */
+function markSubmitted() {
+  s.submitted = true;
+  s.step = 0;
+  s.case = { ...newCase(), submittedOn: storyNow(s) };
+}
+
+/**
+ * Moves the story to the next date in the chosen scenario. The agent's rules then decide what is due;
+ * new proposals start drafting at once, and the banner says what changed.
+ */
 function advance() {
-  if (!s.submitted || s.stage >= 3) return;
-  s.stage += 1;
+  const steps = SCENARIOS[s.scenario];
+  if (!s.submitted || s.step >= steps.length - 1) return;
+  const before = new Set(agentView(s).proposals.map((p) => p.id));
+  s.step += 1;
+  const step = steps[s.step];
+  s.case = withEvents(s.case, step);
+  const view = evaluate(s.case, step.on);
+  const reminders = view.proposals.filter((p) => p.reminder);
+  for (const p of reminders) s.case = withAction(s.case, p, 'reminded', step.on);
+  const added = view.proposals.filter((p) => !before.has(p.id));
+  s.agentFocus = null;
+  prepareAgentDrafts();
+
+  let push = step.push ?? null;
+  if (view.released) push = { title: 'Hold lifted: ₹1,800 is yours', body: `It will be added to your settlement on ${fmtDate(addDays(step.on, 1))}.`, open: 'outcome' };
+  else if (added.length) {
+    const also = reminders.length ? ` Also still waiting: ${AGENT_COPY[reminders[0].type].title.toLowerCase()}.` : '';
+    push = { ...AGENT_COPY[added[0].type].push, open: 'tracker' };
+    push.body += also;
+  }
+  else if (reminders.length) push = { title: `Reminder: ${AGENT_COPY[reminders[0].type].ready.toLowerCase()}`, body: 'Tap to review.', open: 'tracker' };
   if (s.screen !== 'lock') refresh();
-  showPush(STAGES[s.stage].push);
+  if (push) showPush(push);
   syncRail();
+}
+
+// ───────────── Follow-up agent: drafting and approval ─────────────
+
+/** The proofs a proposal may cite: in the case file, and allowed by its sentence plan. */
+const agentValidIds = (type) => new Set(evidenceFor(s.e5).map((e) => e.id).filter((id) => AGENT_TAGS[type].includes(id)));
+
+/** Starts a draft for every waiting proposal that doesn't have one yet. */
+function prepareAgentDrafts() {
+  if (!s.submitted) return;
+  for (const p of agentView(s).proposals) {
+    if (!s.agentDrafts[p.id] && !s.agentJobs[p.id]) startAgentDraft(p);
+  }
+  const p = focusedProposal(s);
+  const draft = p && s.agentDrafts[p.id];
+  if (draft?.announce && s.screen === 'tracker') {
+    toast(draft.announce);
+    draft.announce = null;
+  }
+}
+
+function startAgentDraft(p) {
+  const lang = s.lang; // the agent writes in the statement's language
+  const valid = agentValidIds(p.type);
+  const fallback = (message) => {
+    delete s.agentJobs[p.id];
+    s.agentDrafts[p.id] = { text: scriptedAgentDraft(p.type, lang, s.e5), source: 'scripted', lang, announce: message };
+    if (message && s.screen === 'tracker' && focusedProposal(s)?.id === p.id) {
+      toast(message);
+      s.agentDrafts[p.id].announce = null;
+    }
+    updateAgent();
+  };
+  if (s.aiMode === 'scripted') return fallback(null);
+
+  const job = { phase: 'waiting', text: '', model: s.health.model, controller: new AbortController() };
+  s.agentJobs[p.id] = job;
+  updateAgent();
+  streamDraft({ kind: p.type, lang, variant: '', fresh: false, e5: s.e5 }, {
+    signal: job.controller.signal,
+    onText(raw, model) {
+      if (s.agentJobs[p.id] !== job) return;
+      job.phase = 'streaming';
+      job.model = model;
+      job.text = p.type === 'call_brief' ? raw : cleanDraft(raw, valid);
+      updateAgent();
+    },
+  })
+    .then((result) => {
+      if (s.agentJobs[p.id] !== job) return;
+      const text = p.type === 'call_brief' ? cleanCallBrief(result.text, valid) : cleanDraft(result.text, valid);
+      if (!text) throw new Error('bad_shape');
+      if (p.type !== 'call_brief' && wordCount(text) < 15) throw new Error('too_short');
+      if (!/\[E\d\]/.test(text)) throw new Error('no_tags'); // every message must point to its proof
+      delete s.agentJobs[p.id];
+      s.agentDrafts[p.id] = { text, source: 'live', model: result.model, lang };
+      updateAgent();
+    })
+    .catch((err) => {
+      if (s.agentJobs[p.id] !== job) return;
+      fallback(err?.message === 'no_tags' || err?.message === 'bad_shape'
+        ? "The open model's draft didn't cite its proof, so this is the standard draft."
+        : 'The open model did not answer, so this is the standard draft.');
+    });
+}
+
+function cancelAgentDrafts() {
+  for (const job of Object.values(s.agentJobs)) job.controller?.abort();
+  s.agentJobs = {};
+}
+
+let agentSig = '';
+/** Updates the agent card. Streaming text only touches the text, so buttons are never swapped mid-tap. */
+function updateAgent() {
+  if (s.screen !== 'tracker') return;
+  const p = focusedProposal(s);
+  const el = currentScreen();
+  if (!p || !$('#ag-text', el)) return refresh();
+  const parts = agentParts(s, p);
+  const sig = `${p.id}|${parts.tools}|${Boolean(s.agentJobs[p.id])}`;
+  if (sig !== agentSig) {
+    agentSig = sig;
+    refresh();
+    return;
+  }
+  $('#ag-text', el).innerHTML = parts.text;
+  $('#ag-source', el).innerHTML = parts.source;
+}
+
+/** The merchant's OK: "sends" the message (simulated), or marks the call brief as read. */
+function approveProposal(id) {
+  const p = agentView(s).proposals.find((x) => x.id === id);
+  if (!p || !s.agentDrafts[id] || s.agentSending) return;
+  const now = storyNow(s);
+  if (p.type === 'call_brief') {
+    s.case = withAction(s.case, p, 'acknowledged', now);
+    s.agentFocus = null;
+    refresh();
+    toast('Good luck with the call. Your agent will remind you 30 minutes before.');
+    return;
+  }
+  s.agentSending = id;
+  refresh();
+  setTimeout(() => {
+    s.agentSending = null;
+    s.case = withAction(s.case, p, 'sent', now, { edited: s.agentDrafts[id].source === 'edited' });
+    s.agentFocus = null;
+    refresh();
+    toast(`Sent to ${AGENT_COPY[p.type].sentTo}.`);
+    syncRail();
+  }, 900);
 }
 
 // ───────────── Presenter rail ─────────────
@@ -367,9 +518,10 @@ function syncRail() {
     if (n === step) btn.setAttribute('aria-current', 'step');
     else btn.removeAttribute('aria-current');
   });
-  const next = STAGES[s.stage + 1];
+  const next = SCENARIOS[s.scenario][s.step + 1];
   advanceBtn.disabled = !s.submitted || !next;
-  advanceBtn.textContent = !s.submitted ? 'Advance time' : next ? `Advance to ${next.date}` : 'Hold released';
+  advanceBtn.textContent = !s.submitted ? 'Advance time' : next ? `Advance to ${fmtDate(next.on)}` : 'Hold released';
+  rail.querySelectorAll('[data-action="scenario"]').forEach((btn) => btn.setAttribute('aria-pressed', String(btn.dataset.arg === s.scenario)));
   syncTimer();
 }
 
@@ -385,7 +537,7 @@ function syncAi() {
     text = 'Scripted: instant and the same every time. Best for recording.';
   } else if (s.health.ai === true) {
     state = 'live';
-    text = `Live: ${s.health.model}, an open model running on Groq, drafts the statement. Free, no login.`;
+    text = `Live: ${s.health.model}, an open model running on Groq, drafts the statement and the agent's messages. Free, no login.`;
   } else if (s.health.ai === false) {
     state = 'missing';
     text = "Open model not connected yet: add GROQ_API_KEY under Vercel's Environment Variables, then redeploy. Until then, drafts use the scripted text.";
@@ -409,7 +561,7 @@ function jump(step) {
     s.submitting = false;
     s.declared = true;
     s.timer.end ??= s.timer.start ? Date.now() : null;
-    s.submitted = true;
+    markSubmitted();
   }
   const routes = {
     1: [[], 'lock'],
@@ -429,12 +581,13 @@ function jump(step) {
 /** Back to the lock screen with a clean slate. The drafting mode and model status are kept. */
 function restart() {
   cancelDraft();
+  cancelAgentDrafts();
   clearTimeout(submitTimer);
   closeRail({ restoreFocus: false });
   closeSheet({ restoreFocus: false });
   hidePush();
   if (s.upload) URL.revokeObjectURL(s.upload.url);
-  s = { ...initialState(), aiMode: s.aiMode, health: s.health };
+  s = { ...initialState(), aiMode: s.aiMode, health: s.health, scenario: s.scenario };
   show('lock', 'fade');
 }
 
@@ -543,9 +696,58 @@ const actions = {
   },
   done: () => goTab('holds'),
 
+  // Follow-up agent
+  'agent-approve': approveProposal,
+  'agent-edit'(id) {
+    if (!s.agentDrafts[id] || s.agentJobs[id]) return;
+    s.agentEditing = id;
+    refresh();
+    $('#ag-edit')?.focus();
+  },
+  'agent-edit-done'(id) {
+    const p = agentView(s).proposals.find((x) => x.id === id);
+    const draft = s.agentDrafts[id];
+    const text = p && cleanDraft($('#ag-edit')?.value ?? '', agentValidIds(p.type));
+    if (!text) toast("The message can't be empty, so the last version is kept.");
+    else if (text !== draft.text) s.agentDrafts[id] = { ...draft, text, source: 'edited' };
+    s.agentEditing = null;
+    refresh();
+  },
+  'agent-later'(id) {
+    const p = agentView(s).proposals.find((x) => x.id === id);
+    if (!p) return;
+    s.case = withAction(s.case, p, 'snoozed', storyNow(s));
+    s.agentFocus = null;
+    refresh();
+    toast('Kept for later. Your agent will remind you at the next update.');
+  },
+  'agent-review'(id) {
+    s.agentFocus = id;
+    refresh();
+    currentScreen().querySelector('.agent-card')?.scrollIntoView({ block: 'start' });
+  },
+  'agent-sheet': () => openSheet('agent'),
+
   // Presenter rail
   jump: (step) => jump(Number(step)),
   restart,
+  scenario(name) {
+    if (!SCENARIOS[name] || name === s.scenario) return;
+    s.scenario = name;
+    if (s.submitted) {
+      // Start the story after submitting again, now with the other officer.
+      cancelAgentDrafts();
+      s.step = 0;
+      s.case = { ...newCase(), submittedOn: s.case.submittedOn };
+      s.agentDrafts = {};
+      s.agentFocus = null;
+      s.agentEditing = null;
+      hidePush();
+      refresh();
+      toast(name === 'quiet' ? 'Scenario: the officer goes quiet.' : 'Scenario: the officer responds.');
+    }
+    syncRail();
+  },
   'ai-mode'(mode) {
     s.aiMode = mode === 'scripted' ? 'scripted' : 'live';
     syncAi();

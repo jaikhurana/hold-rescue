@@ -32,7 +32,7 @@
 
       <p class="rail-eyebrow">Concept prototype · Track 1</p>
       <h1 class="rail-title">Hold Rescue</h1>
-      <p class="rail-pitch">A cyber-fraud report puts ₹1,800 of a small merchant's money on hold. Today they write it off. Here they answer it from their phone in under two minutes.</p>
+      <p class="rail-pitch">A cyber-fraud report puts ₹1,800 of a small merchant's money on hold. Today they write it off. Here they answer it from their phone in under two minutes, and a follow-up agent chases it to release.</p>
 
       <section class="timer-card" aria-label="Alert to submitted timer">
         <div class="timer-head">
@@ -50,12 +50,19 @@
         <li><button type="button" data-action="jump" data-arg="4"><span class="step-n">4</span><span>Add the customer's chat</span></button></li>
         <li><button type="button" data-action="jump" data-arg="5"><span class="step-n">5</span><span>Statement drafted by AI</span></button></li>
         <li><button type="button" data-action="jump" data-arg="6"><span class="step-n">6</span><span>Review and submit</span></button></li>
-        <li><button type="button" data-action="jump" data-arg="7"><span class="step-n">7</span><span>Track to release</span></button></li>
+        <li><button type="button" data-action="jump" data-arg="7"><span class="step-n">7</span><span>Agent follows up</span></button></li>
       </ol>
 
       <div class="rail-buttons">
         <button class="btn btn-secondary" type="button" data-action="restart">Restart</button>
         <button class="btn btn-primary" type="button" data-action="advance" id="advance" disabled>Advance time</button>
+      </div>
+      <div class="scenario-row">
+        <span class="eyebrow" id="scenario-label">Officer</span>
+        <div class="seg" role="group" aria-labelledby="scenario-label">
+          <button type="button" data-action="scenario" data-arg="responds" aria-pressed="true">Responds</button>
+          <button type="button" data-action="scenario" data-arg="quiet" aria-pressed="false">Goes quiet</button>
+        </div>
       </div>
 
       <section class="ai-card" aria-label="Drafting mode">
@@ -77,6 +84,7 @@
             <li>Never show who complained.</li>
             <li>Promise a complete, on-time response, not an outcome. Police decide.</li>
             <li>AI writes only from the case file, tags every line with its proof, and never blames the customer.</li>
+            <li>Rules decide when, AI decides what to say, the merchant decides whether to send.</li>
           </ul>
         </details>
         <details>
@@ -94,6 +102,9 @@
             <li>Share of holds under ₹50,000 answered before the deadline.</li>
             <li>Time from alert to submitted, median and 90th percentile (goal under 2 min).</li>
             <li>Money released as a share of money held, and days on hold.</li>
+            <li>Share of officer requests answered within 24 hours.</li>
+            <li>Escalations sent within 1 day of the deadline.</li>
+            <li>Share of agent drafts approved without edits.</li>
             <li>Guardrail: statements officers flag as inaccurate.</li>
           </ul>
         </details>

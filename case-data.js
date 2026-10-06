@@ -31,8 +31,7 @@ export const HOLD = {
 };
 
 export const HOME = {
-  // Settlements reach the bank the day after; this follows the story's date as time advances.
-  nextSettlement: ['Tue 6 Oct', 'Wed 7 Oct', 'Sat 10 Oct', 'Sat 17 Oct'],
+  // The next settlement date is the day after the story's date (see screens.js).
   settlement: '₹23,480',
   todayTotal: '₹4,940',
   payments: [
@@ -200,68 +199,6 @@ export const SCRIPTED = {
     },
   },
 };
-
-// "Advance time" stages after the merchant submits. Stage 0 is "submitted, not yet filed".
-export const STAGES = [
-  { date: 'Mon 5 Oct' },
-  {
-    date: 'Tue 6 Oct',
-    push: { title: 'Grievance filed', body: 'Your response on KK-2417 is on the national grievance portal. The officer has 15 days to decide.', open: 'tracker' },
-  },
-  {
-    date: 'Fri 9 Oct',
-    push: { title: 'Video call booked', body: 'Investigating officer, Cyber Crime PS Lucknow. Wed 14 Oct, 11:30 AM. Tap to prepare.', open: 'tracker' },
-  },
-  {
-    date: 'Fri 16 Oct',
-    push: { title: 'Hold lifted: ₹1,800 is yours', body: 'It will be added to your settlement on Sat 17 Oct.', open: 'outcome' },
-  },
-];
-
-export const OUTCOME = { creditedOn: 'Sat 17 Oct', releasedOn: 'Fri 16 Oct 2026', daysOnHold: 11 };
-
-/**
- * The tracker timeline for a stage (0 = submitted, 1 = filed, 2 = call booked, 3 = released).
- * `sentIn` is the measured alert-to-submit time, e.g. "1 min 24 s", or null if not measured.
- * Each item: { title, state: 'done'|'now'|'next'|'faded', when, text, checklist? }
- */
-export function timeline(stage, sentIn) {
-  const released = stage >= 3;
-  const later = released ? 'faded' : 'next';
-  const byVideo = 'Usually by video call, so you won’t need to travel to Lucknow.';
-  return [
-    { title: 'Hold placed', state: 'done', when: 'Mon 5 Oct', text: '₹1,800 held at the request of Cyber Crime PS, Lucknow.' },
-    {
-      title: 'You responded',
-      state: 'done',
-      when: 'Mon 5 Oct',
-      text: sentIn ? `Case file and statement sent in ${sentIn}.` : 'Case file and statement sent from your phone.',
-    },
-    stage >= 1
-      ? { title: 'Filed on the national grievance portal', state: 'done', when: 'Tue 6 Oct', text: 'Reference GRM/2026/LKO/58213.' }
-      : { title: 'Filed on the national grievance portal', state: 'now', when: 'By Mon 12 Oct', text: 'We file it for you. Nothing for you to do.' },
-    released
-      ? { title: 'Officer decides', state: 'done', when: 'Fri 16 Oct', text: 'Hold released. No further action.' }
-      : stage === 2
-        ? {
-            title: 'Officer decides',
-            state: 'now',
-            when: 'By Wed 21 Oct',
-            text: 'Video call booked for Wed 14 Oct, 11:30 AM.',
-            checklist: [
-              'Keep this case file open',
-              'Join from a quiet place with your ID nearby',
-              'We’ll remind you 30 minutes before',
-            ],
-          }
-        : stage === 1
-          ? { title: 'Officer decides', state: 'now', when: 'By Wed 21 Oct', text: byVideo }
-          : { title: 'Officer decides', state: 'next', when: '15 days after filing', text: byVideo },
-    { title: 'If no decision: District Grievance Officer', state: later, when: stage >= 1 ? 'By Thu 5 Nov' : '15 days later', text: '' },
-    { title: 'Day 75 check', state: later, when: 'Sat 19 Dec', text: 'We remind you and confirm the status.' },
-    { title: 'Day 90: the hold must end', state: later, when: 'Sun 3 Jan 2027', text: 'A contested hold lapses unless police get a legal order to extend it.' },
-  ];
-}
 
 // ───────────── Follow-up agent ─────────────
 
