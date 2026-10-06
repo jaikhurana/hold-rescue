@@ -338,3 +338,121 @@ export const AGENT_COPY = {
     push: { title: 'Day 90 reached', body: 'Your release request is ready.' },
   },
 };
+
+// Letter headings for the agent's messages. The call brief is for the merchant only.
+export const AGENT_LETTERS = {
+  officer_reply: {
+    en: { to: 'To the Investigating Officer, Cyber Crime Police Station, Lucknow', re: 'Re: complaint 3120926••••0471 · hold of ₹1,800 on order KK-2417' },
+    hi: { to: 'सेवा में, जाँच अधिकारी, साइबर क्राइम थाना, लखनऊ', re: 'विषय: शिकायत 3120926••••0471 · ऑर्डर KK-2417 पर ₹1,800 की रोक' },
+  },
+  escalation: {
+    en: { to: 'To the District Grievance Officer', re: 'Re: grievance GRM/2026/LKO/58213 · hold of ₹1,800 on order KK-2417' },
+    hi: { to: 'सेवा में, ज़िला शिकायत निवारण अधिकारी', re: 'विषय: अनुरोध GRM/2026/LKO/58213 · ऑर्डर KK-2417 पर ₹1,800 की रोक' },
+  },
+  release_request: {
+    en: { to: 'To: Grievance desk · Cc: Investigating Officer, Cyber Crime PS, Lucknow', re: 'Re: hold of ₹1,800 on order KK-2417 · 90-day limit' },
+    hi: { to: 'सेवा में: शिकायत निवारण डेस्क · प्रतिलिपि: जाँच अधिकारी, साइबर क्राइम थाना, लखनऊ', re: 'विषय: ऑर्डर KK-2417 पर ₹1,800 की रोक · 90 दिन की सीमा' },
+  },
+};
+
+// The call brief's fixed parts. The rules choose the questions; AI writes only the answers and the tip.
+export const CALL_BRIEF = {
+  en: {
+    title: 'Video call with the investigating officer · Wed 14 Oct, 11:30 AM',
+    keep: 'Keep ready: this case file open on your phone, and your ID.',
+    questionsLabel: 'Likely questions',
+    questions: ['What did the customer buy, and when?', 'Was it delivered?', "Why wasn't the money refunded?"],
+  },
+  hi: {
+    title: 'जाँच अधिकारी के साथ वीडियो कॉल · बुधवार 14 अक्टूबर, सुबह 11:30',
+    keep: 'तैयार रखें: फ़ोन पर यह केस फ़ाइल खुली रखें, और अपना पहचान पत्र।',
+    questionsLabel: 'संभावित सवाल',
+    questions: ['ग्राहक ने क्या ख़रीदा, और कब?', 'क्या डिलीवरी हुई?', 'पैसे वापस क्यों नहीं किए गए?'],
+  },
+};
+
+// Scripted fallbacks for the agent, used when AI is off or fails. Conditions, as for the statement:
+//   'all' · 'chat' (E5 is the sample chat) · 'nochat' · 'attach' (E5 is a tagged upload)
+//   'messages' (E5 shows the exchange request) · 'nomessages'
+// The Hindi versions are faithful translations of the English; IDs, ₹ amounts and tags are unchanged.
+export const AGENT_SCRIPTED = {
+  officer_reply: {
+    en: [
+      ['all', 'Thank you for your message.'],
+      ['chat', "As requested, I am sharing the proof of delivery and the customer's messages about the exchange."],
+      ['nochat', 'As requested, I am sharing the proof of delivery.'],
+      ['all', 'The order was delivered on 18 Sep 2026 and the recipient confirmed delivery with an OTP [E3].'],
+      ['chat', 'On 19 Sep the customer asked to exchange size M for L and refused the ₹120 return courier charge in our published policy [E4][E5].'],
+      ['nochat', 'Our published policy offers a free size exchange within 7 days, with the customer paying the ₹120 return courier [E4].'],
+      ['attach', { exchange: 'A screenshot of my conversation with the customer is attached [E5].', other: 'I have also attached a screenshot from my phone [E5].' }],
+      ['nomessages', "I will share the customer's messages as soon as I can."],
+      ['all', 'I am happy to join a video call at your convenience, and I request that the hold of ₹1,800 be released.'],
+    ],
+    hi: [
+      ['all', 'आपके संदेश के लिए धन्यवाद।'],
+      ['chat', 'आपके कहे अनुसार, मैं डिलीवरी का प्रमाण और एक्सचेंज के बारे में ग्राहक के संदेश साझा कर रहा हूँ।'],
+      ['nochat', 'आपके कहे अनुसार, मैं डिलीवरी का प्रमाण साझा कर रहा हूँ।'],
+      ['all', 'ऑर्डर 18 सितंबर 2026 को डिलीवर हुआ और प्राप्तकर्ता ने OTP से इसकी पुष्टि की [E3]।'],
+      ['chat', '19 सितंबर को ग्राहक ने साइज़ M को L से बदलने को कहा और हमारी प्रकाशित नीति का ₹120 वापसी कूरियर शुल्क देने से मना किया [E4][E5]।'],
+      ['nochat', 'हमारी प्रकाशित नीति में 7 दिन के भीतर साइज़ बदलना मुफ़्त है, केवल ₹120 वापसी कूरियर ग्राहक देता है [E4]।'],
+      ['attach', { exchange: 'ग्राहक के साथ मेरी बातचीत का स्क्रीनशॉट संलग्न है [E5]।', other: 'मैंने अपने फ़ोन से एक स्क्रीनशॉट भी संलग्न किया है [E5]।' }],
+      ['nomessages', 'मैं ग्राहक के संदेश जल्द से जल्द साझा करूँगा।'],
+      ['all', 'मैं आपकी सुविधा से वीडियो कॉल पर जुड़ने को तैयार हूँ, और मेरा अनुरोध है कि ₹1,800 की रोक हटाई जाए।'],
+    ],
+  },
+  escalation: {
+    en: [
+      ['all', 'I request a review of the hold of ₹1,800 on order KK-2417.'],
+      ['all', 'My grievance was filed on the national grievance portal on 6 Oct 2026, and no decision has been shared within 15 days.'],
+      ['all', 'The order was paid for, delivered with OTP confirmation and is covered by our published exchange policy [E1][E3][E4].'],
+      ['chat', 'The complaint arose from a disagreement about a ₹120 return courier charge [E5].'],
+      ['attach', { exchange: 'A screenshot of my conversation with the customer about the exchange is attached [E5].', other: 'I have also attached a screenshot from my phone [E5].' }],
+      ['all', 'I request that the hold be reviewed and released.'],
+    ],
+    hi: [
+      ['all', 'मैं ऑर्डर KK-2417 पर ₹1,800 की रोक की समीक्षा का अनुरोध करता हूँ।'],
+      ['all', 'मेरा अनुरोध 6 अक्टूबर 2026 को राष्ट्रीय शिकायत निवारण पोर्टल पर दर्ज हुआ था, और 15 दिनों में कोई निर्णय नहीं बताया गया है।'],
+      ['all', 'ऑर्डर का भुगतान हुआ, OTP पुष्टि के साथ डिलीवरी हुई, और यह हमारी प्रकाशित एक्सचेंज नीति के अंतर्गत आता है [E1][E3][E4]।'],
+      ['chat', 'यह मामला ₹120 वापसी कूरियर शुल्क पर असहमति से शुरू हुआ [E5]।'],
+      ['attach', { exchange: 'एक्सचेंज के बारे में ग्राहक के साथ मेरी बातचीत का स्क्रीनशॉट संलग्न है [E5]।', other: 'मैंने अपने फ़ोन से एक स्क्रीनशॉट भी संलग्न किया है [E5]।' }],
+      ['all', 'मेरा अनुरोध है कि रोक की समीक्षा करके इसे हटाया जाए।'],
+    ],
+  },
+  release_request: {
+    en: [
+      ['all', 'The hold of ₹1,800 on order KK-2417 was placed on 5 Oct 2026.'],
+      ['all', 'Ninety days have now passed, and I have not been told of any direction to continue it.'],
+      ['all', 'I request that the hold be lifted and the amount added to my next settlement.'],
+      ['all', 'My grievance and evidence are on file under reference GRM/2026/LKO/58213 [E1][E3].'],
+    ],
+    hi: [
+      ['all', 'ऑर्डर KK-2417 पर ₹1,800 की रोक 5 अक्टूबर 2026 को लगाई गई थी।'],
+      ['all', 'अब नब्बे दिन बीत चुके हैं, और मुझे इसे जारी रखने के किसी निर्देश की जानकारी नहीं दी गई है।'],
+      ['all', 'मेरा अनुरोध है कि रोक हटाई जाए और राशि मेरे अगले सेटलमेंट में जोड़ी जाए।'],
+      ['all', 'मेरा अनुरोध और प्रमाण संदर्भ GRM/2026/LKO/58213 के तहत दर्ज हैं [E1][E3]।'],
+    ],
+  },
+  // Call brief answers, in the "A1 / A2 / A3 / TIP" shape the AI also uses.
+  call_brief: {
+    en: {
+      a1: 'A cotton kurta set, size M, paid ₹1,800 by UPI on 14 Sep [E1][E2].',
+      a2: 'Yes, on 18 Sep, and the recipient confirmed it with an OTP [E3].',
+      a3: { messages: 'We offered a free size exchange; our published policy asks the customer to pay the ₹120 return courier [E4][E5].', nomessages: 'We offer a free size exchange; our published policy asks the customer to pay the ₹120 return courier [E4].' },
+      tip: "Say plainly that you're willing to exchange the product as per your policy.",
+    },
+    hi: {
+      a1: 'एक कॉटन कुर्ता सेट, साइज़ M; 14 सितंबर को UPI से ₹1,800 का भुगतान [E1][E2]।',
+      a2: 'हाँ, 18 सितंबर को, और प्राप्तकर्ता ने OTP से पुष्टि की [E3]।',
+      a3: { messages: 'हमने साइज़ मुफ़्त में बदलने की पेशकश की; हमारी प्रकाशित नीति में ₹120 वापसी कूरियर ग्राहक देता है [E4][E5]।', nomessages: 'हम साइज़ मुफ़्त में बदलते हैं; हमारी प्रकाशित नीति में ₹120 वापसी कूरियर ग्राहक देता है [E4]।' },
+      tip: 'साफ़ कहें कि आप अपनी नीति के अनुसार सामान बदलने को तैयार हैं।',
+    },
+  },
+};
+
+// The proof each agent message may cite, from its sentence plan. Any other tag the model writes is dropped.
+export const AGENT_TAGS = {
+  officer_reply: ['E3', 'E4', 'E5'],
+  escalation: ['E1', 'E3', 'E4', 'E5'],
+  release_request: ['E1', 'E3'],
+  call_brief: ['E1', 'E2', 'E3', 'E4', 'E5'],
+};

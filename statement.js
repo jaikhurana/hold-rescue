@@ -1,5 +1,5 @@
 // Pure text functions for the statement. No DOM, so the unit tests can import them directly.
-import { SCRIPTED, isExchangeDispute } from './case-data.js';
+import { AGENT_SCRIPTED, SCRIPTED, isExchangeDispute } from './case-data.js';
 
 /**
  * Tidies model output into one plain paragraph with clean [E1]…[E5] tags.
@@ -67,4 +67,47 @@ export function wordCount(text) {
     .replace(/\[E\d\]/g, ' ')
     .split(/\s+/)
     .filter((word) => /[\p{L}\p{N}]/u.test(word)).length;
+}
+
+// ───────────── Follow-up agent drafts ─────────────
+
+/** The scripted fallback for an agent message ('officer_reply' | 'escalation' | 'release_request' | 'call_brief'). */
+export function scriptedAgentDraft(kind, lang, e5) {
+  const copy = AGENT_SCRIPTED[kind]?.[lang] ?? AGENT_SCRIPTED[kind]?.en;
+  if (!copy) return '';
+  const chat = e5?.kind === 'chat';
+  const attach = e5?.kind === 'tag';
+  const messages = isExchangeDispute(e5);
+  const variant = messages ? 'exchange' : 'other';
+  if (kind === 'call_brief') {
+    return briefText({ a1: copy.a1, a2: copy.a2, a3: copy.a3[messages ? 'messages' : 'nomessages'], tip: copy.tip });
+  }
+  const when = { all: true, chat, nochat: !chat, attach, messages, nomessages: !messages };
+  return copy
+    .filter(([condition]) => when[condition])
+    .map(([, sentence]) => (typeof sentence === 'string' ? sentence : sentence[variant]))
+    .join(' ');
+}
+
+const briefText = ({ a1, a2, a3, tip }) => `A1: ${a1}\nA2: ${a2}\nA3: ${a3}\nTIP: ${tip}`;
+
+/**
+ * Parses a call brief in the "A1: … / A2: … / A3: … / TIP: …" shape, cleaning each line like a statement.
+ * Returns { a1, a2, a3, tip } or null if the shape is wrong or an answer cites no proof.
+ */
+export function parseCallBrief(raw, validIds) {
+  const parts = {};
+  for (const line of String(raw ?? '').replace(/\*\*/g, '').split(/\n+/)) {
+    const m = line.match(/^\s*(A[123]|TIP)\s*[:：.-]\s*(.+)$/i);
+    if (m) parts[m[1].toLowerCase()] = cleanDraft(m[2], validIds);
+  }
+  const answers = [parts.a1, parts.a2, parts.a3];
+  if (answers.some((a) => !a || !/\[E\d\]/.test(a)) || !parts.tip) return null;
+  return { a1: parts.a1, a2: parts.a2, a3: parts.a3, tip: parts.tip };
+}
+
+/** A cleaned call brief back in its four-line form, or null if it doesn't hold together. */
+export function cleanCallBrief(raw, validIds) {
+  const parts = parseCallBrief(raw, validIds);
+  return parts ? briefText(parts) : null;
 }

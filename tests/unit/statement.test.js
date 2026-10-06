@@ -1,7 +1,7 @@
 // Unit tests for the browser's pure text functions.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cleanDraft, scriptedStatement, typedSlice, wordCount } from '../../statement.js';
+import { cleanCallBrief, cleanDraft, parseCallBrief, scriptedAgentDraft, scriptedStatement, typedSlice, wordCount } from '../../statement.js';
 
 const ALL = new Set(['E1', 'E2', 'E3', 'E4', 'E5']);
 const NO_E5 = new Set(['E1', 'E2', 'E3', 'E4']);
@@ -87,4 +87,44 @@ test('wordCount ignores tags', () => {
   assert.equal(wordCount('Paid by UPI [E1][E2].'), 3);
   assert.equal(wordCount(''), 0);
   assert.equal(wordCount(undefined), 0);
+});
+
+// ───────────── Follow-up agent drafts ─────────────
+
+test('agent fallbacks match the brief word for word when the chat is in the file', () => {
+  assert.equal(
+    scriptedAgentDraft('officer_reply', 'en', { kind: 'chat' }),
+    "Thank you for your message. As requested, I am sharing the proof of delivery and the customer's messages about the exchange. The order was delivered on 18 Sep 2026 and the recipient confirmed delivery with an OTP [E3]. On 19 Sep the customer asked to exchange size M for L and refused the ₹120 return courier charge in our published policy [E4][E5]. I am happy to join a video call at your convenience, and I request that the hold of ₹1,800 be released.",
+  );
+  assert.equal(
+    scriptedAgentDraft('escalation', 'en', { kind: 'chat' }),
+    'I request a review of the hold of ₹1,800 on order KK-2417. My grievance was filed on the national grievance portal on 6 Oct 2026, and no decision has been shared within 15 days. The order was paid for, delivered with OTP confirmation and is covered by our published exchange policy [E1][E3][E4]. The complaint arose from a disagreement about a ₹120 return courier charge [E5]. I request that the hold be reviewed and released.',
+  );
+  assert.equal(
+    scriptedAgentDraft('release_request', 'en', null),
+    'The hold of ₹1,800 on order KK-2417 was placed on 5 Oct 2026. Ninety days have now passed, and I have not been told of any direction to continue it. I request that the hold be lifted and the amount added to my next settlement. My grievance and evidence are on file under reference GRM/2026/LKO/58213 [E1][E3].',
+  );
+});
+
+test('agent fallbacks never claim proof that is not in the file', () => {
+  const reply = scriptedAgentDraft('officer_reply', 'en', null);
+  assert.ok(!reply.includes('[E5]') && !reply.includes("customer's messages about the exchange"));
+  assert.match(reply, /I will share the customer's messages as soon as I can\./);
+  assert.ok(!scriptedAgentDraft('escalation', 'en', null).includes('[E5]'));
+  const tagged = scriptedAgentDraft('officer_reply', 'en', { kind: 'tag', tag: 'Delivery proof' });
+  assert.match(tagged, /I have also attached a screenshot from my phone \[E5\]\./);
+  assert.ok(!scriptedAgentDraft('call_brief', 'en', null).includes('[E5]'));
+  for (const kind of ['officer_reply', 'escalation', 'release_request', 'call_brief']) {
+    assert.match(scriptedAgentDraft(kind, 'hi', { kind: 'chat' }), /[ऀ-ॿ]/, `${kind} has a Hindi version`);
+  }
+});
+
+test('the call brief keeps its four-line shape and every answer cites proof', () => {
+  const all = new Set(['E1', 'E2', 'E3', 'E4', 'E5']);
+  const scripted = scriptedAgentDraft('call_brief', 'en', { kind: 'chat' });
+  assert.deepEqual(Object.keys(parseCallBrief(scripted, all)), ['a1', 'a2', 'a3', 'tip']);
+  const messy = '**A1:** A kurta set. [E1, E2]  \nA2 - Yes [E3]\n\nA3: Our policy [E4][E9]\nTIP: Say plainly that you will exchange it.';
+  assert.equal(cleanCallBrief(messy, all), 'A1: A kurta set [E1][E2].\nA2: Yes [E3]\nA3: Our policy [E4]\nTIP: Say plainly that you will exchange it.');
+  assert.equal(parseCallBrief('A1: no proof here\nA2: x [E3]\nA3: y [E4]\nTIP: z', all), null);
+  assert.equal(parseCallBrief('A1: x [E1]\nA2: y [E3]\nTIP: z', all), null, 'a missing answer');
 });
