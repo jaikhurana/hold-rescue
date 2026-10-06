@@ -1,10 +1,10 @@
 # Hold Rescue
 
-**A police complaint freezes ₹1,800 of a small merchant's money. Today they write it off. Here they answer it from their phone in under two minutes.**
+**A cyber-fraud report puts ₹1,800 of a small merchant's money on hold. Today they write it off. Here they answer it from their phone in under two minutes, and a follow-up agent chases it to release.**
 
 A concept prototype for the Razorpay x ISB AI x PM Build Challenge, Track 1 ("Razorpay in Your Pocket"), by Jai Khurana.
 
-> Big merchants get a human agent for this. Hold Rescue gives every small merchant the same help, in software.
+> Big merchants get a human agent who chases the case. Hold Rescue gives every small merchant one, in software.
 
 **Live prototype: https://hold-rescue.vercel.app** · opens on any phone, no login. On a laptop it shows a phone frame with the presenter controls beside it; on a phone, tap "Demo controls".
 
@@ -12,7 +12,7 @@ Fictional merchant, customer and police data. Styled with Razorpay's open-source
 
 ## What it does
 
-When a fake cyber-crime complaint (1930 / NCRP) freezes a small payment, nobody guides a small merchant, so they write the money off. Hold Rescue turns the alert into a two-minute task on the phone:
+When a payment is reported as fraud on the national cyber-crime portal (1930 / cybercrime.gov.in), police ask the payment company to hold the amount. For a small payment nobody guides the merchant, and nobody on a three-person team has time to follow up, so the money is written off. Hold Rescue turns the alert into a two-minute task on the phone, then keeps the case moving:
 
 1. **Alert** arrives as a push notification.
 2. **Understand the hold**: what happened, the deadline, and what happens if you don't respond.
@@ -20,9 +20,17 @@ When a fake cyber-crime complaint (1930 / NCRP) freezes a small payment, nobody 
 4. **Add the customer's chat** from the phone. It shows this is an exchange dispute, not fraud.
 5. **Statement drafted by AI**: an open model (gpt-oss-120b on Groq) writes it only from the case file and tags every sentence with its proof. English or हिंदी.
 6. **Review and submit** in one tap.
-7. **Track to release**: grievance portal filing, a video call with the officer, and the 15-, 30- and 90-day deadlines, with reminders.
+7. **The follow-up agent chases it to release.** It watches every legal deadline, notices when something needs doing, prepares the work, and asks for one tap of approval:
+   - the officer asks for proof → **a reply** with the evidence, ready to approve
+   - a video call is booked → **a one-screen call brief** with likely questions and suggested answers
+   - the officer's 15 days pass with no decision → **a request for review** by the District Grievance Officer
+   - Day 90 passes with no order to continue the hold → **a release request**
+
+   Nothing leaves the app without the merchant's OK, and "What your agent did" logs every step.
 
 It promises a complete, on-time response, never an outcome. Police decide.
+
+**Rules decide when, AI decides what to say, the merchant decides whether to send.** The presenter rail can play two stories: the officer **responds** (released after 11 days) or **goes quiet** (escalation, then the 90-day rule; released after 92 days).
 
 ## Run it locally
 
@@ -64,17 +72,19 @@ Plain HTML, CSS and JavaScript (ES modules) plus two Vercel Functions. No framew
 | `index.html` | Presenter rail and the phone shell |
 | `styles.css` | Blade colour tokens (light and dark), layout, components |
 | `app.js` | State, navigation, drafting, timer, demo controls |
+| `agent.js` | The follow-up agent's rules: deadlines, proposals, watch list, activity log, timeline (pure functions) |
 | `screens.js` | One render function per screen |
-| `case-data.js` | Every fact, in one place: used by the screens **and** by the AI prompt |
+| `case-data.js` | Every fact, in one place: used by the screens **and** by the AI prompt; the two scenarios; the agent's templates |
 | `statement.js` | Pure text functions: clean the model's output, scripted statements |
 | `draft-client.js` | Streams `/api/draft` in the browser, with timeouts |
-| `api/draft.js` | `POST`: builds the prompt from `case-data.js`, streams from Groq |
+| `api/draft.js` | `POST`: the statement or one of four agent messages; builds the prompt from `case-data.js`, streams from Groq |
 | `api/health.js` | `GET`: `{ ok, ai, model }` |
 | `scripts/dev-server.js` | Local server that runs `api/*.js` like Vercel does |
 
 ## How the AI is kept on a leash
 
-- The browser can send only `{ lang, variant, fresh, e5 }`. The server whitelists each field, refuses bodies over 2 KB, and builds the whole prompt from the fixed facts in `case-data.js`. No free text from the browser ever reaches the model.
+- The browser can send only `{ kind, lang, variant, fresh, e5 }`. The server whitelists each field (an unknown `kind` gets 400), refuses bodies over 2 KB, and builds the whole prompt from the fixed facts in `case-data.js`, including the scenario's dates, references and the officer's request. No free text from the browser ever reaches the model.
+- The agent's timing is plain, unit-tested date arithmetic (`agent.js`), never the model. Every message it drafts needs the merchant's **Approve and send**, and may cite only the proofs its plan allows.
 - The prompt is a sentence plan: what each sentence says and which proof it cites. It never accuses the customer and never names whoever complained.
 - Every tag in the output is checked against the case file. A draft that cites no proof is replaced by the standard draft, with a note saying why.
 - If the model is slow (no first text in 30 s), rate-limited, misconfigured or down, the scripted statement appears and says so.
