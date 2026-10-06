@@ -63,9 +63,17 @@ test('happy path: from the lock-screen alert to the hold being lifted', async ({
   await expectNoHorizontalScroll(page);
 
   await app(page).getByRole('button', { name: 'Track this hold' }).click();
-  for (const date of ['Tue 6 Oct', 'Fri 9 Oct', 'Fri 16 Oct']) {
-    await app(page).getByRole('button', { name: `Demo · Skip ahead to ${date}` }).click();
-  }
+  const skip = (date) => app(page).getByRole('button', { name: `Demo · Skip ahead to ${date}` }).click();
+  const agentButton = (name) => page.locator('.screen:not(.leaving) .agent-card').getByRole('button', { name });
+  await skip('Tue 6 Oct');
+  await skip('Fri 9 Oct');
+  await expect(agentButton('Approve and send')).toBeEnabled({ timeout: 60_000 });
+  await agentButton('Approve and send').click();
+  await expect(page.locator('.screen:not(.leaving) .agent-card')).toContainText('Sent to the investigating officer');
+  await skip('Mon 12 Oct');
+  await expect(agentButton('Got it')).toBeEnabled({ timeout: 60_000 });
+  await agentButton('Got it').click();
+  await skip('Fri 16 Oct');
   await expect(page.locator('.push')).toContainText('Hold lifted: ₹1,800 is yours');
   await expect(screen(page).locator('.summary .badge')).toHaveText('Released');
   await app(page).getByRole('button', { name: 'See the result' }).click();
@@ -134,7 +142,7 @@ test('dark mode renders with dark surfaces and light text', async ({ page }) => 
 test('the rail reports when the open model is not connected', async ({ page, isMobile }) => {
   await page.route('**/api/health', (route) => route.fulfill({ contentType: 'application/json', body: '{"ok":true,"ai":false,"model":"gpt-oss-120b"}' }));
   await page.goto('/');
-  if (isMobile) await app(page).getByRole('button', { name: 'Demo controls' }).click();
+  if (isMobile) await app(page).getByRole('button', { name: 'Demo controls', exact: true }).click();
   await expect(page.locator('#ai-status-text')).toContainText('Open model not connected yet');
   await page.locator('#rail').getByRole('button', { name: 'Scripted' }).click();
   await expect(page.locator('#ai-status-text')).toHaveText('Scripted: instant and the same every time. Best for recording.');
