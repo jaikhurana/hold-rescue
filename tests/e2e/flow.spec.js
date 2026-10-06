@@ -23,7 +23,7 @@ const app = (page) => page.locator('#phone');
 
 async function openHold(page) {
   await page.goto('/');
-  await app(page).getByRole('button', { name: /is on hold after a police complaint/ }).click();
+  await app(page).getByRole('button', { name: /a cyber-fraud report names this payment/ }).click();
   await expect(screen(page).getByRole('heading', { name: 'Payment on hold' })).toBeVisible();
 }
 

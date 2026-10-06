@@ -21,12 +21,13 @@ export const HOLD = {
   stationShort: 'Cyber Crime PS, Lucknow',
   complaintRef: '3120926••••0471',
   complaintFiled: 'Sat 3 Oct 2026',
+  reportedOn: 'cybercrime.gov.in / 1930',
   respondBy: 'Mon 12 Oct',
   daysLeft: 7,
   reference: 'HR-2417-1005',
   submittedOn: 'Mon 5 Oct 2026',
   // Line used in the model prompt. The complainant is never named anywhere.
-  fact: 'A hold of ₹1,800 was placed on 5 Oct 2026 on order KK-2417 after a cyber-crime complaint at Cyber Crime Police Station, Lucknow.',
+  fact: 'The payment for order KK-2417 was reported as fraud on the national cyber-crime portal, and Cyber Crime Police Station, Lucknow asked for ₹1,800 to be held on 5 Oct 2026 while they look into it.',
 };
 
 export const HOME = {
@@ -229,7 +230,7 @@ export function timeline(stage, sentIn) {
   const later = released ? 'faded' : 'next';
   const byVideo = 'Usually by video call, so you won’t need to travel to Lucknow.';
   return [
-    { title: 'Hold placed', state: 'done', when: 'Mon 5 Oct', text: '₹1,800 held after a complaint at Cyber Crime PS, Lucknow.' },
+    { title: 'Hold placed', state: 'done', when: 'Mon 5 Oct', text: '₹1,800 held at the request of Cyber Crime PS, Lucknow.' },
     {
       title: 'You responded',
       state: 'done',

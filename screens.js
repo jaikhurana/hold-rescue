@@ -67,7 +67,7 @@ function lock() {
           <span class="app-glyph" aria-hidden="true">₹</span>
           <span class="notif-text">
             <span class="notif-meta"><b>Payments</b><span>now</span></span>
-            <strong>${HOLD.amount} is on hold after a police complaint</strong>
+            <strong>${HOLD.amount} on hold: a cyber-fraud report names this payment</strong>
             <span>Order ${HOLD.order}. Respond by ${HOLD.respondBy} to get it back. Takes about 2 minutes.</span>
           </span>
         </button>
@@ -88,7 +88,7 @@ function lock() {
 function alertCard(s) {
   const state = holdState(s);
   const copy = {
-    hold: { ic: 'lock', eyebrow: `Action needed · ${HOLD.daysLeft} days left`, title: `${HOLD.amount} on hold after a police complaint`, sub: `Order ${HOLD.order} · respond by ${HOLD.respondBy}` },
+    hold: { ic: 'lock', eyebrow: `Action needed · ${HOLD.daysLeft} days left`, title: `${HOLD.amount} on hold after a cyber-fraud report`, sub: `Order ${HOLD.order} · respond by ${HOLD.respondBy}` },
     review: { ic: 'clock', eyebrow: 'Under review', title: `Your response on ${HOLD.amount} is filed`, sub: `Order ${HOLD.order} · we’ll tell you when the officer replies` },
     released: { ic: 'checkCircle', eyebrow: 'Hold lifted', title: `${HOLD.amount} is back in your settlement`, sub: `Order ${HOLD.order} · added on Sat 17 Oct` },
   }[state];
@@ -186,7 +186,7 @@ function holds(s) {
       <button class="hold-card" type="button" data-action="open-hold">
         <span class="row-ic tint-hold">${icon('police', 20)}</span>
         <span class="row-main">
-          <span class="row-title">${HOLD.order} · police complaint</span>
+          <span class="row-title">${HOLD.order} · cyber-fraud report</span>
           <span class="row-sub">${HOLD.stationShort} · held ${HOLD.placedOn.replace(" ", "&nbsp;")}</span>
         </span>
         <span class="row-end">${HOLD.amount}${statusBadge(s)}</span>
@@ -239,16 +239,17 @@ function hold(s) {
       ${deadline}
       <section class="card prose">
         <h3>What happened</h3>
-        <p>A cyber-crime complaint filed with police in Lucknow names this payment. The law requires us to hold the amount until police decide. The money is safe with us.</p>
+        <p>Someone reported this payment as fraud on the national cyber-crime portal (1930). Police at ${HOLD.stationShort} have asked us to hold ${HOLD.amount} while they look into it. They haven't decided anything yet, and the money stays with us.</p>
         <h3>If you don't respond</h3>
-        <p>For amounts under ₹50,000, police can hand the money to the person who complained, without an FIR. <strong>That is how ${LEDGER.lost} went on two holds this year.</strong></p>
+        <p>For amounts under ₹50,000, police can return the money to the person who reported it, even without registering a case. <strong>That is how ${LEDGER.lost} went on two holds this year.</strong></p>
       </section>
       <div class="banner info">${icon('truck')}
         <p><strong>Delivered with OTP on 18 Sep</strong> · No refund or return on record. If the customer asked for an exchange, that chat is your strongest proof.</p>
       </div>
       <dl class="card facts">
-        <div><dt>Police station</dt><dd>${HOLD.stationShort}</dd></div>
-        <div><dt>Complaint ref.</dt><dd class="mono-ink">${HOLD.complaintRef}</dd></div>
+        <div><dt>Reported on</dt><dd>${HOLD.reportedOn}</dd></div>
+        <div><dt>Hold requested by</dt><dd>${HOLD.stationShort}</dd></div>
+        <div><dt>Complaint acknowledgement no.</dt><dd class="mono-ink">${HOLD.complaintRef}</dd></div>
         <div><dt>Complaint filed</dt><dd>${HOLD.complaintFiled}</dd></div>
         <div><dt>Who complained</dt><dd class="with-ic">${icon("private", 16)}Kept private by law</dd></div>
       </dl>
@@ -327,7 +328,7 @@ function casefile(s) {
         </div>
         <dl class="file-lines">
           <div><dt>File no.</dt><dd>${HOLD.order}</dd></div>
-          <div><dt>Subject</dt><dd>Hold of ${HOLD.amount}, police complaint</dd></div>
+          <div><dt>Subject</dt><dd>Hold of ${HOLD.amount}, cyber-fraud report</dd></div>
           <div><dt>Status</dt><dd>${status}</dd></div>
         </dl>
       </section>
@@ -490,7 +491,7 @@ function statement(s) {
         <p class="letter-sign">${letter.sign}</p>
       </article>
       <div class="tools" id="st-tools" role="group" aria-label="Statement tools">${p.tools}</div>
-      <p class="guard">${icon('shield', 18)}<span>AI writes only from your case file. It won't add facts or accuse your customer. Tap a tag to see its proof.</span></p>
+      <p class="guard">${icon('shield', 18)}<span>AI writes only from your case file. It won't add facts or blame your customer. Tap a tag to see its proof.</span></p>
     </div>
     <footer class="footer">
       <button class="btn btn-primary btn-block" id="st-submit" type="button" data-action="go" data-arg="review"${p.busy ? ' disabled' : ''}>Review and submit</button>
