@@ -208,6 +208,23 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
 - **New metrics** (added to the rail's "What we'd measure"): share of officer requests answered within 24 hours; escalations sent within 1 day of the deadline; share of agent drafts approved without edits (the log already records "You edited and approved…").
 - **Real versus simulated:** The deadline maths and AI drafting are real. Sending is simulated: the agent never contacts anyone, and every "Sent to…" is a demo of what would be filed on the grievance portal. The officer's request, the call booking and the release are scripted scenario steps.
 
+## M5c · Visual refresh to Razorpay's current look
+
+- **When / goal:** 7 Oct 2026. Make the phone UI look like Razorpay's merchant app as it ships today, not as the brief described it.
+- **What I asked:** "Can we make the UI similar to Razorpay's current theme?"
+- **What Claude researched first (public sources, nothing copied):**
+  - **Blade (github.com/razorpay/blade, latest commit that day):** our tokens already matched Blade's current open-source values exactly (primary azure `#1364F1`, Inter for text, TASA Orbiter for headings, radii 4/8/12/16 px). Blade also has a new "neutral" theme with black buttons, but the live app doesn't use it.
+  - **razorpay.com:** buttons and highlighted headline text use a brighter brand blue, `#305EFF`, which is not in the open-source tokens. Headings are TASA Orbiter Display at medium weight.
+  - **The merchant app's public Play Store screenshots:** a light Home (greeting, avatar, balance in a white card, a dark navy accent card, a row of quick actions), five bottom tabs, large page titles on tab screens, tracked-caps section labels, small tinted status badges, and amounts with lighter paise (".00").
+- **What changed:**
+  - Primary blue → `#305EFF` in both themes (Jai chose this over staying Blade-only). It's the one deliberate departure from Blade's open-source tokens; everything else is still Blade. Contrast: white on it 5.17:1, blue text ≥ 5.6:1 on every background in both themes.
+  - Home: the full-bleed navy hero became a light header ("Good morning · Jaipur", "Kesar Kurtas", a "Live mode" pill), a white "Next settlement" card, and the hold alert as a navy accent card with a coloured icon per state (on hold, under review, action ready, lifted).
+  - Five tabs (Home, Payments, Holds, Support, Account), a large "Holds" page title, amounts with lighter paise, 8 px buttons, 4 px status badges, medium-weight headings and amounts.
+  - Screens without an app bar keep a solid band behind the status bar, so scrolled content never runs under it (found while checking the new Home).
+- **What stayed:** every flow, all copy, the follow-up agent, the concept strip, and the rule that the phone never shows the Razorpay logo, wordmark or name. The rail's fine print now says the look is "styled after Razorpay's current merchant app, using its open-source Blade design tokens and its brand blue; not a Razorpay product".
+- **How it was verified:** `npm test` → 64/64; `npm run test:e2e` → 22/22; the contrast script on the new tokens; in the in-app browser at 1440×900 (light) and at 390×844 and 360×740 (light and dark): Home, Holds, the tracker's agent card, no horizontal scroll, five tabs at 70×54 px each. Two bugs found on screen and fixed: paise wrapped onto their own line in list rows, and content scrolled under the status bar on the new light Home.
+- **Real versus simulated:** No change.
+
 ---
 
 ## AI in the product

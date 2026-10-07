@@ -10,8 +10,11 @@ import { parseCallBrief, wordCount } from './statement.js';
 
 export const NOT_IN_PROTOTYPE = 'Not part of this prototype.';
 
-/** Status-bar tone per screen: white text on the lock screen and the navy home hero. */
-export const TONE = { lock: 'on-dark', home: 'on-dark' };
+/** Status-bar tone per screen: white text on the lock screen's wallpaper, dark elsewhere. */
+export const TONE = { lock: 'on-dark' };
+
+/** "₹23,480" → ₹23,480 with a lighter ".00", the way the merchant app shows amounts. */
+export const money = (amount) => `<span class="money">${amount}<span class="paise">.00</span></span>`;
 
 export function esc(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -35,6 +38,11 @@ export function holdState(s) {
 
 // ───────────── Shared pieces ─────────────
 
+/** A tab screen's large title, as in the current merchant app. */
+function pageHead(title) {
+  return `<header class="page-head"><h2 tabindex="-1">${title}</h2></header>`;
+}
+
 function appbar(title, { back = true, end = '' } = {}) {
   return `
     <header class="appbar">
@@ -49,6 +57,7 @@ function tabbar(s, active) {
     ['home', 'Home', 'home'],
     ['payments', 'Payments', 'card'],
     ['holds', 'Holds', 'pause'],
+    ['support', 'Support', 'help'],
     ['account', 'Account', 'user'],
   ];
   return `
@@ -134,22 +143,26 @@ function home(s) {
   ];
   return `
     <div class="body flush">
-      <header class="hero">
-        <div class="hero-top">
-          <span class="avatar" aria-hidden="true">${MERCHANT.initials}</span>
-          <div class="hero-id">
-            <h2 tabindex="-1">${MERCHANT.store}</h2>
-            <p><span class="dot live" aria-hidden="true"></span>Live mode · ${MERCHANT.city}</p>
-          </div>
-          <button class="icon-btn" type="button" data-action="na" aria-label="Notifications">${icon('bell', 22)}</button>
+      <header class="home-top">
+        <span class="avatar" aria-hidden="true">${MERCHANT.initials}</span>
+        <div class="home-id">
+          <p>Good morning · ${MERCHANT.city}</p>
+          <h2 tabindex="-1">${MERCHANT.store}</h2>
         </div>
-        <p class="hero-label">Next settlement · ${fmtDate(addDays(storyNow(s), 1))}</p>
-        <p class="amount">${HOME.settlement}</p>
-        <span class="hero-chip">
-          <span class="dot ${released ? 'ok' : 'hold'}" aria-hidden="true"></span>
-          ${released ? `Includes ${HOLD.amount} released from the hold` : `${HOLD.amount} held back from this settlement`}
-        </span>
+        <span class="live-pill"><span class="dot live" aria-hidden="true"></span>Live mode</span>
+        <button class="icon-btn" type="button" data-action="na" aria-label="Notifications">${icon('bell', 22)}</button>
       </header>
+
+      <section class="home-sec" aria-label="Next settlement">
+        <div class="card balance-card">
+          <p class="balance-label">Next settlement · ${fmtDate(addDays(storyNow(s), 1))}</p>
+          <p class="amount">${money(HOME.settlement)}</p>
+          <p class="balance-sub">
+            <span class="dot ${released ? 'ok' : 'hold'}" aria-hidden="true"></span>
+            ${released ? `Includes ${HOLD.amount} released from the hold` : `${HOLD.amount} held back from this settlement`}
+          </p>
+        </div>
+      </section>
 
       <section class="home-sec" aria-label="Quick actions">
         <div class="qa">
@@ -176,7 +189,7 @@ function home(s) {
             <div class="row">
               <span class="row-ic">${icon(p.method === 'Card' ? 'card' : 'bolt', 18)}</span>
               <span class="row-main"><span class="row-title">${p.order}</span><span class="row-sub">${p.method} · ${p.time}</span></span>
-              <span class="row-end">${p.amount}<span class="badge pos">Captured</span></span>
+              <span class="row-end">${money(p.amount)}<span class="badge pos">Captured</span></span>
             </div>`)
             .join('')}
         </div>
@@ -197,12 +210,12 @@ function statusBadge(s) {
 function holds(s) {
   const released = holdState(s) === 'released';
   return `
-    ${appbar('Holds', { back: false })}
+    ${pageHead('Holds')}
     <div class="body">
       <p class="intro">Money held back from your settlements because police or a bank asked for it.</p>
       <div class="ledger">
-        <div class="ledger-cell"><span class="eyebrow">Lost in 2026</span><span class="ledger-amt neg">${LEDGER.lost}</span></div>
-        <div class="ledger-cell"><span class="eyebrow">Recovered</span><span class="ledger-amt${released ? ' pos' : ''}">${released ? LEDGER.recovered : '₹0'}</span></div>
+        <div class="ledger-cell"><span class="eyebrow">Lost in 2026</span><span class="ledger-amt neg">${money(LEDGER.lost)}</span></div>
+        <div class="ledger-cell"><span class="eyebrow">Recovered</span><span class="ledger-amt${released ? ' pos' : ''}">${money(released ? LEDGER.recovered : '₹0')}</span></div>
       </div>
 
       <h3 class="sec-title">${released ? 'Resolved' : 'Active'}</h3>
@@ -212,7 +225,7 @@ function holds(s) {
           <span class="row-title">${HOLD.order} · cyber-fraud report</span>
           <span class="row-sub">${HOLD.stationShort} · held ${HOLD.placedOn.replace(" ", "&nbsp;")}</span>
         </span>
-        <span class="row-end">${HOLD.amount}${statusBadge(s)}</span>
+        <span class="row-end">${money(HOLD.amount)}${statusBadge(s)}</span>
       </button>
 
       <h3 class="sec-title">Earlier this year</h3>
@@ -224,7 +237,7 @@ function holds(s) {
               <span class="row-title">${h.order} · ${h.when}</span>
               <span class="row-sub">Not answered. Returned to the complainant.</span>
             </span>
-            <span class="row-end"><span class="neg-amt">${h.amount}</span><span class="badge neg">Lost</span></span>
+            <span class="row-end"><span class="neg-amt">${money(h.amount)}</span><span class="badge neg">Lost</span></span>
           </div>`).join('')}
       </div>
       <p class="note">Both were small orders. No one on the team had time to follow up before the deadline.</p>
@@ -260,7 +273,7 @@ function hold(s) {
     <div class="body">
       <section class="card summary" aria-label="Hold summary">
         <div class="summary-top"><span class="eyebrow">${holdState(s) === 'released' ? 'Released' : 'Amount on hold'}</span>${statusBadge(s)}</div>
-        <p class="amount">${HOLD.amount}</p>
+        <p class="amount">${money(HOLD.amount)}</p>
         <p class="small muted">Order ${HOLD.order} · held from your settlement on ${HOLD.placedOn}</p>
       </section>
       ${deadline}
@@ -806,7 +819,7 @@ function tracker(s) {
       ${agentCard(s)}
       <section class="card summary" aria-label="Hold summary">
         <div class="summary-top"><span class="eyebrow">${released ? 'Released' : 'Amount on hold'}</span>${statusBadge(s)}</div>
-        <p class="amount">${HOLD.amount}</p>
+        <p class="amount">${money(HOLD.amount)}</p>
         <p class="small muted with-ic">${icon('police', 16)}${HOLD.stationShort} · as of ${fmtDate(now)}</p>
       </section>
       <ol class="timeline" aria-label="Progress">
@@ -839,7 +852,7 @@ function outcome(s) {
       <div class="success">
         <span class="success-check" aria-hidden="true">${icon('check', 40)}</span>
         <h2 tabindex="-1">Hold lifted</h2>
-        <p class="amount ok-text">${HOLD.amount}</p>
+        <p class="amount ok-text">${money(HOLD.amount)}</p>
         ${result ? `<p>Back in your settlement on ${fmtDate(result.creditedOn)}.</p>` : ''}
       </div>
       <dl class="card facts">
