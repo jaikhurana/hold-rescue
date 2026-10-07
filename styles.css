@@ -48,40 +48,40 @@
   --ease: cubic-bezier(.2, .7, .2, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --ground: #06080B;
-    --bg: hsl(210 5% 8%);
-    --surface: hsl(210 6% 13%);
-    --surface-2: hsl(210 5% 17%);
-    --ink: #F1F3F4;
-    --ink-2: hsl(210 3% 80%);
-    --muted: hsl(210 3% 64%);
-    --line: hsl(216 4% 22%);
-    --line-2: hsl(210 4% 32%);
-    --primary: hsl(227 100% 59%); /* white button text on it: 5.0:1 */
-    --primary-strong: hsl(227 100% 66%);
-    --on-primary: #FFFFFF;
-    --primary-text: hsl(227 100% 80%);
-    --primary-soft: hsl(227 100% 62% / .22);
-    --ok: hsl(150 48% 42%);
-    --ok-text: hsl(150 40% 64%);
-    --ok-soft: hsl(150 60% 40% / .22);
-    --hold: hsl(5 73% 55%);
-    --hold-text: hsl(5 77% 76%);
-    --hold-soft: hsl(5 76% 55% / .20);
-    --due: hsl(23 92% 53%);
-    --due-text: hsl(24 100% 72%);
-    --due-soft: hsl(25 100% 50% / .18);
-    --navy: hsl(218 72% 11%);
-    --navy-2: hsl(218 80% 19%);
+/* Dark is opt-in from the presenter rail (Theme: Dark). Light is the default whatever the device setting,
+   because Razorpay's merchant app is light. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #06080B;
+  --bg: hsl(210 5% 8%);
+  --surface: hsl(210 6% 13%);
+  --surface-2: hsl(210 5% 17%);
+  --ink: #F1F3F4;
+  --ink-2: hsl(210 3% 80%);
+  --muted: hsl(210 3% 64%);
+  --line: hsl(216 4% 22%);
+  --line-2: hsl(210 4% 32%);
+  --primary: hsl(227 100% 59%); /* white button text on it: 5.0:1 */
+  --primary-strong: hsl(227 100% 66%);
+  --on-primary: #FFFFFF;
+  --primary-text: hsl(227 100% 80%);
+  --primary-soft: hsl(227 100% 62% / .22);
+  --ok: hsl(150 48% 42%);
+  --ok-text: hsl(150 40% 64%);
+  --ok-soft: hsl(150 60% 40% / .22);
+  --hold: hsl(5 73% 55%);
+  --hold-text: hsl(5 77% 76%);
+  --hold-soft: hsl(5 76% 55% / .20);
+  --due: hsl(23 92% 53%);
+  --due-text: hsl(24 100% 72%);
+  --due-soft: hsl(25 100% 50% / .18);
+  --navy: hsl(218 72% 11%);
+  --navy-2: hsl(218 80% 19%);
 
-    --bezel: #1A1D21;
-    --shadow: none;
-    --shadow-lg: 0 12px 40px hsl(0 0% 0% / .5);
-    --scrim: hsl(0 0% 0% / .6);
-  }
+  --bezel: #1A1D21;
+  --shadow: none;
+  --shadow-lg: 0 12px 40px hsl(0 0% 0% / .5);
+  --scrim: hsl(0 0% 0% / .6);
 }
 
 /* ───────────── Base ───────────── */
@@ -559,7 +559,7 @@ h2[tabindex="-1"]:focus { outline: none; }
   transition: opacity .2s, translate .2s var(--ease);
 }
 .toast.show { opacity: 1; translate: 0 0; }
-@media (prefers-color-scheme: dark) { .toast { background: hsl(210 6% 24%); } }
+:root[data-theme="dark"] .toast { background: hsl(210 6% 24%); }
 
 /* ───────────── Lock screen ───────────── */
 .lock {
@@ -700,7 +700,7 @@ button.notif:hover { background: hsl(0 0% 100% / .22); }
 .alert-card.action .eyebrow { color: hsl(227 100% 86%); }
 .alert-card.released .alert-ic { background: var(--ok-solid); }
 .alert-card.released .eyebrow { color: hsl(150 70% 74%); }
-@media (prefers-color-scheme: dark) { .alert-card { border-color: hsl(227 60% 50% / .35); } }
+:root[data-theme="dark"] .alert-card { border-color: hsl(227 60% 50% / .35); }
 
 /* Large page titles on tab screens, as in the current merchant app. */
 .page-head { flex: none; padding: calc(var(--top) + 14px) 16px 0; }

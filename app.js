@@ -47,6 +47,7 @@ const initialState = () => ({
   agentSending: null, // proposal id being "sent"
   agentFocus: null, // a put-off proposal the merchant chose to review
   scenario: 'responds', // presenter setting, kept across Restart: 'responds' | 'quiet'
+  theme: 'light', // presenter setting, kept across Restart: light by default, like Razorpay's app
   // Presenter settings, kept across Restart:
   aiMode: 'live', // 'live' | 'scripted'
   health: { ai: null, model: 'gpt-oss-120b' },
@@ -525,6 +526,13 @@ function syncRail() {
   syncTimer();
 }
 
+/** Light by default whatever the device setting; dark only when the presenter picks it. */
+function syncTheme() {
+  document.documentElement.dataset.theme = s.theme;
+  $('meta[name="theme-color"]').content = s.theme === 'dark' ? '#131517' : '#F5F6F8';
+  rail.querySelectorAll('[data-action="theme"]').forEach((btn) => btn.setAttribute('aria-pressed', String(btn.dataset.arg === s.theme)));
+}
+
 const aiCard = $('.ai-card');
 const aiStatus = $('#ai-status-text');
 
@@ -587,7 +595,7 @@ function restart() {
   closeSheet({ restoreFocus: false });
   hidePush();
   if (s.upload) URL.revokeObjectURL(s.upload.url);
-  s = { ...initialState(), aiMode: s.aiMode, health: s.health, scenario: s.scenario };
+  s = { ...initialState(), aiMode: s.aiMode, health: s.health, scenario: s.scenario, theme: s.theme };
   show('lock', 'fade');
 }
 
@@ -748,6 +756,10 @@ const actions = {
     }
     syncRail();
   },
+  theme(name) {
+    s.theme = name === 'dark' ? 'dark' : 'light';
+    syncTheme();
+  },
   'ai-mode'(mode) {
     s.aiMode = mode === 'scripted' ? 'scripted' : 'live';
     syncAi();
@@ -783,6 +795,7 @@ document.addEventListener('keydown', (event) => {
 // ───────────── Start ─────────────
 
 show('lock', 'none', { focus: false });
+syncTheme();
 
 syncAi();
 fetch('/api/health')

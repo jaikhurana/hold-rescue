@@ -122,18 +122,34 @@ test('a real image can be picked, tagged and added as E5', async ({ page }) => {
   await expect(screen(page).getByLabel('E5: Delivery proof')).toBeVisible();
 });
 
-test('dark mode renders with dark surfaces and light text', async ({ page }) => {
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await openHold(page);
-  const colors = await page.evaluate(() => {
+const lum = (rgb) => {
+  const [r, g, b] = rgb.match(/\d+/g).map(Number);
+  return (r * 299 + g * 587 + b * 114) / 1000;
+};
+const screenColors = (page) =>
+  page.evaluate(() => {
     const el = document.querySelector('.screen:not(.leaving)');
     const card = el.querySelector('.card');
-    return { bg: getComputedStyle(el).backgroundColor, card: getComputedStyle(card).backgroundColor, ink: getComputedStyle(card).color };
+    return { bg: getComputedStyle(el).backgroundColor, card: getComputedStyle(card).backgroundColor, ink: getComputedStyle(card).color, page: getComputedStyle(document.body).backgroundColor };
   });
-  const lum = (rgb) => {
-    const [r, g, b] = rgb.match(/\d+/g).map(Number);
-    return (r * 299 + g * 587 + b * 114) / 1000;
-  };
+
+test('light by default, even when the device is set to dark', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await openHold(page);
+  const colors = await screenColors(page);
+  expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
+  expect(lum(colors.bg)).toBeGreaterThan(230);
+  expect(lum(colors.page)).toBeGreaterThan(220);
+  expect(lum(colors.ink)).toBeLessThan(60);
+});
+
+test('dark theme renders with dark surfaces and light text when chosen in the rail', async ({ page, isMobile }) => {
+  await openHold(page);
+  if (isMobile) await page.getByRole('button', { name: 'Demo controls', exact: true }).click();
+  await page.locator('#rail').getByRole('button', { name: 'Dark', exact: true }).click();
+  if (isMobile) await page.keyboard.press('Escape');
+  await expect(page.locator('#rail [data-action="theme"][data-arg="dark"]')).toHaveAttribute('aria-pressed', 'true');
+  const colors = await screenColors(page);
   expect(lum(colors.bg)).toBeLessThan(40);
   expect(lum(colors.card)).toBeLessThan(50);
   expect(lum(colors.ink)).toBeGreaterThan(200);

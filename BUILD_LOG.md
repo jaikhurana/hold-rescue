@@ -225,6 +225,15 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
 - **How it was verified:** `npm test` → 64/64; `npm run test:e2e` → 22/22; the contrast script on the new tokens; in the in-app browser at 1440×900 (light) and at 390×844 and 360×740 (light and dark): Home, Holds, the tracker's agent card, no horizontal scroll, five tabs at 70×54 px each. Two bugs found on screen and fixed: paise wrapped onto their own line in list rows, and content scrolled under the status bar on the new light Home.
 - **Real versus simulated:** No change.
 
+## M5d · Light by default
+
+- **When / goal:** 8 Oct 2026. Jai still saw a black theme after the refresh.
+- **Cause:** the brief asked for light and dark themes that follow the device (`prefers-color-scheme`), and Jai's Mac is in dark mode, so the app rendered its dark theme. Razorpay's merchant app is light.
+- **What Claude did:** Light is now the default whatever the device setting. The dark tokens moved from `@media (prefers-color-scheme: dark)` to `:root[data-theme="dark"]`, and a **Theme: Light | Dark** switch in the presenter rail turns dark on for anyone who wants it. Like the AI mode and the scenario, it stays in memory, survives Restart, and a reload goes back to light.
+- **Decisions and trade-offs:** This deliberately departs from the brief's "light and dark via prefers-color-scheme" rule, because matching Razorpay's current look matters more for this demo. Dark mode is kept, still passes contrast, and is one tap away.
+- **How it was verified:** `npm test` → 64/64. `npm run test:e2e` → 24/24, with two new tests: the app stays light when the device is set to dark, and choosing Dark in the rail gives dark surfaces with light text (phone and desktop). Also checked in the in-app browser with the device emulating dark mode.
+- **Real versus simulated:** No change.
+
 ---
 
 ## AI in the product

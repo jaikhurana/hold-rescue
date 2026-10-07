@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -7,8 +7,7 @@
   <meta name="description" content="A small merchant answers a cyber-fraud report that put their payment on hold, from their phone, in under two minutes. Concept prototype with fictional data.">
   <meta property="og:title" content="Hold Rescue">
   <meta property="og:description" content="Big merchants get a human agent who chases the case. Hold Rescue gives every small merchant one, in software.">
-  <meta name="theme-color" content="#F5F6F8" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#131517" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F5F6F8">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23305EFF'/%3E%3Ctext x='16' y='23' font-family='sans-serif' font-size='20' font-weight='700' fill='white' text-anchor='middle'%3E%E2%82%B9%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -62,6 +61,14 @@
         <div class="seg" role="group" aria-labelledby="scenario-label">
           <button type="button" data-action="scenario" data-arg="responds" aria-pressed="true">Responds</button>
           <button type="button" data-action="scenario" data-arg="quiet" aria-pressed="false">Goes quiet</button>
+        </div>
+      </div>
+
+      <div class="scenario-row theme-row">
+        <span class="eyebrow" id="theme-label">Theme</span>
+        <div class="seg" role="group" aria-labelledby="theme-label">
+          <button type="button" data-action="theme" data-arg="light" aria-pressed="true">Light</button>
+          <button type="button" data-action="theme" data-arg="dark" aria-pressed="false">Dark</button>
         </div>
       </div>
 
