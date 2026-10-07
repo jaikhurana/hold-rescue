@@ -26,7 +26,7 @@ async function startTracking(page, isMobile, scenario) {
   await page.goto('/');
   await inRail(page, isMobile, async (rail) => {
     await rail.getByRole('button', { name: scenario === 'quiet' ? 'Goes quiet' : 'Responds' }).click();
-    await rail.getByRole('button', { name: /Agent follows up/ }).click();
+    await rail.getByRole('button', { name: /Tracer follows up/ }).click();
   });
   await expect(card(page)).toContainText("I'm watching 3 dates for you");
 }
@@ -63,6 +63,7 @@ test('Responds: the agent drafts a reply, prepares a call brief, and the hold is
   await advance(page, isMobile, viaRail, 'Fri 9 Oct');
   await expect(page.locator('.push')).toContainText('Officer asked for delivery proof');
   await expect(card(page)).toContainText('Needs your OK');
+  await expect(card(page)).toContainText('Tracer');
   await expect(card(page)).toContainText('Reply to the officer');
   await expect(card(page)).toContainText('The officer asked on Fri 9 Oct');
   await expect(card(page).locator('#ag-source')).toContainText(/Drafted live by gpt-oss|Standard draft/, { timeout: 60_000 });
@@ -94,7 +95,7 @@ test('Responds: the agent drafts a reply, prepares a call brief, and the hold is
   expect(errors).toEqual([]);
 });
 
-test('Goes quiet: escalation, a watch note, a release request on Day 90, and 92 days on hold', async ({ page, isMobile }) => {
+test('Goes quiet: escalation, a watch note, and the hold lapses on Day 90 with nothing to approve', async ({ page, isMobile }) => {
   const errors = watchErrors(page);
   const seen = [];
   const viaRail = isMobile; // the other control from the Responds test
@@ -115,17 +116,18 @@ test('Goes quiet: escalation, a watch note, a release request on Day 90, and 92 
   await expect(page.locator('.log')).toContainText('Still waiting. Watching Day 75 (Sat 19 Dec) and Day 90 (Sun 3 Jan 2027).');
 
   await advance(page, isMobile, viaRail, 'Sun 3 Jan 2027');
-  await expect(page.locator('.push')).toContainText('Day 90 reached');
-  await expect(card(page)).toContainText('Release request');
+  await expect(page.locator('.push')).toContainText('Day 90 passed with no order to continue it, so the hold lapsed');
+  await expect(card(page)).toContainText('The hold lapsed on Day 90 and ₹1,800 was released.');
+  await expect(card(page).getByRole('button', { name: 'Approve and send' })).toHaveCount(0); // nothing to approve
+  await expect(page.locator('.log')).toContainText('Day 90: no order to continue the hold, so it lapsed and ₹1,800 was released');
+  await expect(page.locator('.log')).toContainText('Confirmed the release and told you');
   await expectCleanText(page, seen);
-  await approve(page);
-  await expect(card(page)).toContainText('Sent to our grievance desk, copied to the officer · Sun 3 Jan 2027');
 
-  await advance(page, isMobile, viaRail, 'Tue 5 Jan 2027');
   await app(page).getByRole('button', { name: 'See the result' }).click();
-  await expect(page.locator('.facts')).toContainText('Days on hold92');
-  await expect(page.locator('.facts')).toContainText('Released onTue 5 Jan 2027');
-  await expect(page.locator('.facts')).toContainText('Follow-ups sent with your OK2');
+  await expect(page.locator('.facts')).toContainText('Days on hold90');
+  await expect(page.locator('.facts')).toContainText('Released onSun 3 Jan 2027');
+  await expect(page.locator('.facts')).toContainText('How it endedLapsed on Day 90');
+  await expect(page.locator('.facts')).toContainText('Sent by Tracer with your OK1');
   await expectCleanText(page, seen);
   expect(errors).toEqual([]);
 });

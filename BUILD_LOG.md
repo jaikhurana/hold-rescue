@@ -234,6 +234,22 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
 - **How it was verified:** `npm test` → 64/64. `npm run test:e2e` → 24/24, with two new tests: the app stays light when the device is set to dark, and choosing Dark in the rail gives dark surfaces with light text (phone and desktop). Also checked in the in-app browser with the device emulating dark mode.
 - **Real versus simulated:** No change.
 
+## M5e · Tracer, the Day 90 rule, and a cleaner phone
+
+- **When / goal:** 8 Oct 2026. Three changes after reviewing the "Goes quiet" story.
+- **What I asked:**
+  - Day 90 could arrive without any work from me, so why ask me to approve a release request?
+  - Remove the "concept / fictional data / styled after… / by Jai Khurana" text that makes it look like a generated demo.
+  - Give the agent a name.
+- **What Claude did:**
+  - **Day 90 became a rule, not a task.** `agent.js` now lapses a contested hold on Day 90 unless police got a legal order to extend it (a new `extended` event). The platform holds the money, so it releases it then; Tracer only confirms it and tells the merchant. The `release_request` kind, its prompt, templates, letter head and tags are gone, and the API now refuses that kind with 400. "Goes quiet" now ends on Sun 3 Jan 2027 after 90 days, and Outcome says "How it ended: Lapsed on Day 90".
+  - **The rule only helps a merchant who responded**, which the engine encodes: an unanswered hold never lapses. This is the honest pitch for the quiet path. Tracer's value is making sure the hold is contested and escalated, so the 90-day rule can work for the merchant.
+  - **Named the agent Tracer** ("Tracer · follow-up agent", "What Tracer did", "What Tracer can do", rail step "Tracer follows up"). Claude advised against "Ray", because Razorpay's own assistant is already called RAY ("Ask RAY" on razorpay.com).
+  - **Removed the demo wording:** the in-phone "Concept · fictional data" strip, the "Prototype: …" notes, "Not part of this prototype" (now "Not available yet"), the rail's "Concept prototype · Track 1" eyebrow and its long fine print. The phone keeps the "Demo controls" button, which phone users need to reach the rail.
+- **Decisions and trade-offs:** One short line stays at the bottom of the presenter rail: "Independent concept with fictional data · not affiliated with Razorpay." The UI now uses Razorpay's brand blue and layout, so a public link with no affiliation note at all could be mistaken for an official Razorpay page. That would hurt more than help in a Razorpay-judged challenge.
+- **How it was verified:** `npm test` → 66/66, including new tests that only a contested hold lapses, that an extension order stops the lapse, that an officer's release before Day 90 is not a lapse, and that a waiting escalation is dropped once the hold lapses. `npm run test:e2e` → 24/24. The quiet path ends with the lapse and nothing to approve, and the phone's text has no "concept", "fictional" or "prototype". Checked in the in-app browser.
+- **Real versus simulated:** The Day 90 lapse is a real rule in the engine; the money movement is simulated.
+
 ---
 
 ## AI in the product
@@ -255,4 +271,4 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
 
 **What happens on failure.** If the model sends no text within 30 s, takes more than 90 s, is rate-limited, misconfigured (no key) or down, the browser shows the pre-written standard statement with a quick typewriter effect and a toast: "The open model did not answer, so this is the standard draft." On the server, a model that errors or returns nothing hands over to the next model within one shared 28 s budget, before anything is streamed. Redraft, which skips the cache, is capped per visitor (6 a minute) and per instance (30 a minute) so a public link can't use up the free quota. The presenter can also switch to **Scripted** for a demo that is identical every time and makes no AI calls.
 
-**The follow-up agent uses the same guardrails**, with one rule on top: rules decide *when* (every deadline is plain, tested date arithmetic in `agent.js`), AI decides only *what to say*, and the merchant decides *whether to send*. The browser can ask only for one of four fixed kinds of message. Each kind's facts, dates and the officer's request are held on the server; each kind may cite only the proofs its plan allows; and no message counts as sent until the merchant taps **Approve and send**. If the model fails, each message falls back to its standard draft, with the same toast as the statement.
+**Tracer, the follow-up agent, uses the same guardrails**, with one rule on top: rules decide *when* (every deadline is plain, tested date arithmetic in `agent.js`), AI decides only *what to say*, and the merchant decides *whether to send*. The browser can ask only for one of three fixed kinds of message (a reply to the officer, a call brief, a request for review); Day 90 needs no message, because the rules lapse the hold. Each kind's facts, dates and the officer's request are held on the server; each kind may cite only the proofs its plan allows; and no message counts as sent until the merchant taps **Approve and send**. If the model fails, each message falls back to its standard draft, with the same toast as the statement.

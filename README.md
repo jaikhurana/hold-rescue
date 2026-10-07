@@ -1,6 +1,6 @@
 # Hold Rescue
 
-**A cyber-fraud report puts ₹1,800 of a small merchant's money on hold. Today they write it off. Here they answer it from their phone in under two minutes, and a follow-up agent chases it to release.**
+**A cyber-fraud report puts ₹1,800 of a small merchant's money on hold. Today they write it off. Here they answer it from their phone in under two minutes, and Tracer, a follow-up agent, chases it to release.**
 
 A concept prototype for the Razorpay x ISB AI x PM Build Challenge, Track 1 ("Razorpay in Your Pocket"), by Jai Khurana.
 
@@ -20,17 +20,19 @@ When a payment is reported as fraud on the national cyber-crime portal (1930 / c
 4. **Add the customer's chat** from the phone. It shows this is an exchange dispute, not fraud.
 5. **Statement drafted by AI**: an open model (gpt-oss-120b on Groq) writes it only from the case file and tags every sentence with its proof. English or हिंदी.
 6. **Review and submit** in one tap.
-7. **The follow-up agent chases it to release.** It watches every legal deadline, notices when something needs doing, prepares the work, and asks for one tap of approval:
+7. **Tracer, the follow-up agent, chases it to release.** It watches every legal deadline, notices when something needs doing, prepares the work, and asks for one tap of approval:
    - the officer asks for proof → **a reply** with the evidence, ready to approve
    - a video call is booked → **a one-screen call brief** with likely questions and suggested answers
    - the officer's 15 days pass with no decision → **a request for review** by the District Grievance Officer
-   - Day 90 passes with no order to continue the hold → **a release request**
+   - Day 90 passes with no order to continue the hold → **the hold lapses and the platform releases the money**; Tracer just tells the merchant. Nothing to approve.
 
-   Nothing leaves the app without the merchant's OK, and "What your agent did" logs every step.
+   Nothing leaves the app without the merchant's OK, and "What Tracer did" logs every step.
+
+   The 90-day rule only helps a merchant who responded: an unanswered hold under ₹50,000 can be handed to the person who reported it. That's why the two-minute response matters even when the police go quiet.
 
 It promises a complete, on-time response, never an outcome. Police decide.
 
-**Rules decide when, AI decides what to say, the merchant decides whether to send.** The presenter rail can play two stories: the officer **responds** (released after 11 days) or **goes quiet** (escalation, then the 90-day rule; released after 92 days).
+**Rules decide when, AI decides what to say, the merchant decides whether to send.** The presenter rail can play two stories: the officer **responds** (released after 11 days) or **goes quiet** (escalation, then the hold lapses on Day 90).
 
 ## Run it locally
 
@@ -72,12 +74,12 @@ Plain HTML, CSS and JavaScript (ES modules) plus two Vercel Functions. No framew
 | `index.html` | Presenter rail and the phone shell |
 | `styles.css` | Blade colour tokens (light and dark), layout, components |
 | `app.js` | State, navigation, drafting, timer, demo controls |
-| `agent.js` | The follow-up agent's rules: deadlines, proposals, watch list, activity log, timeline (pure functions) |
+| `agent.js` | Tracer's rules: deadlines, the Day 90 lapse, proposals, watch list, activity log, timeline (pure functions) |
 | `screens.js` | One render function per screen |
 | `case-data.js` | Every fact, in one place: used by the screens **and** by the AI prompt; the two scenarios; the agent's templates |
 | `statement.js` | Pure text functions: clean the model's output, scripted statements |
 | `draft-client.js` | Streams `/api/draft` in the browser, with timeouts |
-| `api/draft.js` | `POST`: the statement or one of four agent messages; builds the prompt from `case-data.js`, streams from Groq |
+| `api/draft.js` | `POST`: the statement or one of Tracer's three messages; builds the prompt from `case-data.js`, streams from Groq |
 | `api/health.js` | `GET`: `{ ok, ai, model }` |
 | `scripts/dev-server.js` | Local server that runs `api/*.js` like Vercel does |
 

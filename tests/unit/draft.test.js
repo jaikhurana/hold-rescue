@@ -286,7 +286,8 @@ test('health reports whether a key is set, never the key', async () => {
 // ───────────── Follow-up agent kinds ─────────────
 
 test('kind is whitelisted: agent kinds pass, anything else is refused with 400', async () => {
-  for (const kind of ['statement', 'officer_reply', 'escalation', 'release_request', 'call_brief']) assert.equal(normalise({ kind }).kind, kind);
+  for (const kind of ['statement', 'officer_reply', 'escalation', 'call_brief']) assert.equal(normalise({ kind }).kind, kind);
+  assert.equal(normalise({ kind: 'release_request' }).kind, null, 'Day 90 is a rule now, not a message');
   assert.equal(normalise({}).kind, 'statement');
   assert.equal(normalise({ kind: 'officer_reply', variant: 'shorter' }).variant, '', 'only the statement has a Shorter version');
   globalThis.fetch = () => assert.fail('should not call the model');
@@ -323,12 +324,10 @@ test('each agent kind gets its own plan, facts and length', () => {
   assert.match(user('officer_reply'), /customer asked to exchange size M for L .*\[E4\]\[E5\]/);
   assert.match(user('escalation'), /70 to 110 words/);
   assert.match(user('escalation'), /had 15 days, until Wed 21 Oct 2026, and has shared no decision/);
-  assert.match(user('release_request'), /50 to 90 words/);
-  assert.match(user('release_request'), /Day 90 after the hold was Sun 3 Jan 2027/);
   assert.match(user('call_brief'), /^A1: .*\[E1\]\[E2\]$/m);
   assert.match(user('call_brief'), /^A3: .*\[E4\]\[E5\]$/m);
   assert.match(user('call_brief'), /Video call with the investigating officer: Wed 14 Oct 2026, 11:30 AM/);
-  for (const kind of ['officer_reply', 'escalation', 'release_request', 'call_brief']) {
+  for (const kind of ['officer_reply', 'escalation', 'call_brief']) {
     assert.match(user(kind), /do not promise any outcome/);
     assert.match(buildMessages({ kind, lang: 'en', e5: null })[0].content, /never promise an outcome/);
   }
@@ -347,7 +346,7 @@ test('without the chat, agent prompts never claim the customer\'s messages are a
 });
 
 test('Hindi agent prompts give the exact words for lifting the hold', () => {
-  const prompt = buildMessages({ kind: 'release_request', lang: 'hi', e5: null })[1].content;
+  const prompt = buildMessages({ kind: 'escalation', lang: 'hi', e5: null })[1].content;
   assert.match(prompt, /रोक हटाई जाए/);
   assert.match(prompt, /never जारी/);
   assert.match(prompt, /राष्ट्रीय शिकायत निवारण पोर्टल/);

@@ -216,7 +216,7 @@ button:disabled { cursor: not-allowed; }
 .device { flex: none; }
 .phone {
   --sb-h: 50px;      /* fake status bar */
-  --strip-h: 16px;   /* "Concept · fictional data" strip */
+  --strip-h: 0px;    /* on phones this row holds the Demo controls button */
   --top: calc(var(--sb-h) + var(--strip-h));
   --bottom: 22px;    /* room for the home indicator */
   position: relative;
@@ -257,7 +257,6 @@ button:disabled { cursor: not-allowed; }
   color: var(--ink);
   pointer-events: none;
 }
-.strip-label { font: 600 9px/1 var(--font-text); letter-spacing: .16em; text-transform: uppercase; opacity: .72; }
 .demo-pill { display: none; }
 .home-ind {
   position: absolute;
@@ -291,7 +290,7 @@ button:disabled { cursor: not-allowed; }
     box-shadow: none;
   }
   .statusbar, .home-ind { display: none; }
-  .strip { justify-content: space-between; padding: env(safe-area-inset-top) 6px 0 16px; pointer-events: auto; }
+  .strip { justify-content: flex-end; padding: env(safe-area-inset-top) 6px 0 16px; pointer-events: auto; }
   .demo-pill {
     display: inline-flex;
     align-items: center;
@@ -1090,6 +1089,7 @@ button.notif:hover { background: hsl(0 0% 100% / .22); }
 .agent-card.needs { border-color: color-mix(in srgb, var(--primary) 45%, var(--line)); box-shadow: 0 0 0 3px var(--primary-soft); }
 .agent-head { display: flex; align-items: center; gap: 10px; }
 .agent-head h3 { flex: 1; font: 600 14.5px/1.3 var(--font-display); }
+.agent-kind { font: 500 12.5px/1 var(--font-text); color: var(--muted); }
 .agent-ic { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; background: var(--primary-soft); color: var(--primary-text); }
 .badge.neutral { background: var(--surface-2); color: var(--ink-2); }
 .agent-title { font: 600 16px/1.3 var(--font-display); }

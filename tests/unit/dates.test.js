@@ -33,7 +33,7 @@ test('the story timeline adds up from Mon 5 Oct 2026', () => {
   assert.equal(day(9, 21) - day(9, 6), 15, 'officer decides 15 days after filing on Tue 6 Oct');
   assert.equal(day(9, 22) - day(9, 21), 1, 'escalation the day after the officer misses Wed 21 Oct');
   assert.equal(day(10, 6) - day(9, 22), 15, 'District Grievance Officer 15 days after the escalation: Fri 6 Nov');
-  assert.equal(day(0, 5, 2027) - holdPlaced, 92, '92 days on hold on the quiet path, released Tue 5 Jan 2027');
+  assert.equal(day(0, 3, 2027) - holdPlaced, 90, 'on the quiet path the hold lapses on Day 90, Sun 3 Jan 2027');
   assert.equal(day(11, 19) - holdPlaced, 75, 'day 75 check on Sat 19 Dec');
   assert.equal(day(0, 3, 2027) - holdPlaced, 90, 'day 90 on Sun 3 Jan 2027');
   assert.equal(day(9, 16) - holdPlaced, 11, '11 days on hold, released Fri 16 Oct');
@@ -41,5 +41,5 @@ test('the story timeline adds up from Mon 5 Oct 2026', () => {
 
 test('the scenario steps fall on the dates the addendum gives', () => {
   assert.deepEqual(SCENARIOS.responds.map((step) => fmtDate(step.on)), ['Mon 5 Oct', 'Tue 6 Oct', 'Fri 9 Oct', 'Mon 12 Oct', 'Fri 16 Oct']);
-  assert.deepEqual(SCENARIOS.quiet.map((step) => fmtDate(step.on)), ['Mon 5 Oct', 'Tue 6 Oct', 'Thu 22 Oct', 'Fri 6 Nov', 'Sun 3 Jan 2027', 'Tue 5 Jan 2027']);
+  assert.deepEqual(SCENARIOS.quiet.map((step) => fmtDate(step.on)), ['Mon 5 Oct', 'Tue 6 Oct', 'Thu 22 Oct', 'Fri 6 Nov', 'Sun 3 Jan 2027']);
 });

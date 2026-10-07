@@ -164,10 +164,10 @@ test('the rail reports when the open model is not connected', async ({ page, isM
   await expect(page.locator('#ai-status-text')).toHaveText('Scripted: instant and the same every time. Best for recording.');
 });
 
-test('the phone UI never shows the Razorpay name and carries the concept disclaimers', async ({ page }) => {
+test('the phone shows no Razorpay name and no demo wording; the rail keeps one affiliation line', async ({ page }) => {
   await page.goto('/');
   const phoneText = await page.locator('#phone').innerText();
   expect(phoneText).not.toMatch(/razorpay/i);
-  await expect(page.locator('.strip-label')).toHaveText(/Concept · fictional data/i);
-  await expect(page.locator('#rail .fine')).toContainText('not a Razorpay product');
+  expect(phoneText).not.toMatch(/concept|fictional|prototype/i);
+  await expect(page.locator('#rail .fine')).toHaveText('Independent concept with fictional data · not affiliated with Razorpay.');
 });

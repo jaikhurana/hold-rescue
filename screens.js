@@ -8,7 +8,7 @@ import {
 } from './case-data.js';
 import { parseCallBrief, wordCount } from './statement.js';
 
-export const NOT_IN_PROTOTYPE = 'Not part of this prototype.';
+export const NOT_IN_PROTOTYPE = 'Not available yet.';
 
 /** Status-bar tone per screen: white text on the lock screen's wallpaper, dark elsewhere. */
 export const TONE = { lock: 'on-dark' };
@@ -110,7 +110,7 @@ function lock() {
 function alertCard(s) {
   const state = holdState(s);
   const waiting = waitingProposal(s);
-  const released = outcomeOf(s.case);
+  const released = outcomeOf(s.case, storyNow(s));
   const copy = {
     action: waiting && {
       ic: 'spark',
@@ -251,8 +251,8 @@ function holds(s) {
 function afterSubmit(s) {
   const { deadlines: d, released } = agentView(s);
   if (released) return [`Hold lifted on ${fmtDate(d.releasedOn)}`, `${HOLD.amount} is added to your settlement on ${fmtDate(addDays(d.releasedOn, 1))}.`];
-  if (d.escalatedOn) return ['Review requested', `You asked the District Grievance Officer for a review on ${fmtDate(d.escalatedOn)}. Your follow-up agent is watching Day 90.`];
-  if (d.filedOn) return ['Filed on the national grievance portal', `The officer decides by ${fmtDate(d.officerDueOn)}. Your follow-up agent is watching every deadline.`];
+  if (d.escalatedOn) return ['Review requested', `You asked the District Grievance Officer for a review on ${fmtDate(d.escalatedOn)}. Tracer is watching Day 90.`];
+  if (d.filedOn) return ['Filed on the national grievance portal', `The officer decides by ${fmtDate(d.officerDueOn)}. Tracer is watching every deadline.`];
   return ['Response submitted', `We file it on the national grievance portal by ${HOLD.respondBy} and tell you when the officer replies.`];
 }
 
@@ -449,7 +449,7 @@ export function sheetBody(s) {
       </button>
     </div>
     <button class="btn btn-secondary btn-block" type="button" data-action="pick-file">${icon('image', 18)}Choose another screenshot</button>
-    <p class="fine-print">Prototype: these three screenshots are samples. You can also pick a real image.</p>`;
+`;
 }
 
 /** The labels a merchant can give an uploaded screenshot (index matches the chips above). */
@@ -603,7 +603,6 @@ function review(s) {
       <button class="btn btn-primary btn-block" id="submit" type="button" data-action="submit"${!s.declared || s.submitting ? ' disabled' : ''}>
         ${s.submitting ? '<span class="spinner" aria-hidden="true"></span>Sending your case file…' : `${icon('send', 18)}Submit response`}
       </button>
-      <p class="fine-print">Prototype: nothing is actually sent.</p>
     </footer>`;
 }
 
@@ -708,7 +707,6 @@ const DUE = {
   officer_reply: (p) => `Reply by ${fmtDate(p.dueBy)}`,
   call_brief: () => 'Read it before the call',
   escalation: (p) => `Send by ${fmtDate(p.dueBy)}`,
-  release_request: (p) => `Send by ${fmtDate(p.dueBy)}`,
 };
 
 function agentCard(s) {
@@ -718,10 +716,10 @@ function agentCard(s) {
   const head = (cls, label) => `
     <div class="agent-head">
       <span class="agent-ic" aria-hidden="true">${icon('spark', 18)}</span>
-      <h3 id="agent-h">Follow-up agent</h3>
+      <h3 id="agent-h">Tracer <span class="agent-kind">· follow-up agent</span></h3>
       <span class="badge ${cls}">${label}</span>
     </div>`;
-  const canDo = `<button class="link-btn" type="button" data-action="agent-sheet">${icon('shield', 16)}What the agent can do</button>`;
+  const canDo = `<button class="link-btn" type="button" data-action="agent-sheet">${icon('shield', 16)}What Tracer can do</button>`;
 
   if (p) {
     const parts = agentParts(s, p);
@@ -757,7 +755,7 @@ function agentCard(s) {
     ? `<p class="agent-done">${icon('checkCircle', 18)}<span>${done.status === 'acknowledged' ? 'Brief read' : `Sent to ${AGENT_COPY[done.type].sentTo}`} · ${fmtDate(done.on)}</span></p>`
     : '';
   const watching = view.released
-    ? '<p class="agent-line">The hold is lifted. Nothing left to watch.</p>'
+    ? `<p class="agent-line">${view.deadlines.lapsed ? 'The hold lapsed on Day 90 and ₹1,800 was released.' : 'The hold is lifted.'} Nothing left to watch.</p>`
     : `<p class="agent-line">I'm watching ${view.watch.length} date${view.watch.length === 1 ? '' : 's'} for you</p>
        <ul class="watch">${view.watch.map((w) => `<li><span>${w.label}</span><strong>${fmtDate(w.on)}${w.time ? `, ${w.time}` : ''}</strong></li>`).join('')}</ul>`;
   return `
@@ -773,13 +771,13 @@ function agentCard(s) {
     </section>`;
 }
 
-const ACTORS = { agent: ['spark', 'Agent'], you: ['user', 'You'], officer: ['police', 'Officer'], system: ['send', 'Portal'] };
+const ACTORS = { agent: ['spark', 'Tracer'], you: ['user', 'You'], officer: ['police', 'Officer'], system: ['send', 'System'] };
 
 function activityLog(s) {
   const rows = activity(s.case, storyNow(s));
   return `
     <section aria-labelledby="log-h">
-      <h3 class="sec-title" id="log-h">What your agent did</h3>
+      <h3 class="sec-title" id="log-h">What Tracer did</h3>
       <ol class="log">
         ${rows.map((r) => `
           <li class="log-row ${r.actor}">
@@ -791,12 +789,12 @@ function activityLog(s) {
     </section>`;
 }
 
-/** Body of the "What the agent can do" sheet. */
+/** Body of the "What Tracer can do" sheet. */
 export function agentSheetBody() {
   const can = ['Watch your deadlines', 'Draft replies', 'Prepare call briefs'];
   const cant = ['Send anything without your OK', 'Contact your customer', 'Promise an outcome'];
   return `
-    <p class="intro">After you submit, your follow-up agent keeps the case moving. Rules decide when to act, AI drafts the words, and you decide what is sent.</p>
+    <p class="intro">After you submit, Tracer keeps the case moving. Rules decide when to act, AI drafts the words, and you decide what is sent.</p>
     <h3 class="sheet-sub">Can</h3>
     <ul class="can-list">${can.map((t) => `<li>${icon('check', 18)}<span>${t}</span></li>`).join('')}</ul>
     <h3 class="sheet-sub">Can't</h3>
@@ -845,7 +843,7 @@ function tracker(s) {
 
 function outcome(s) {
   const ms = measuredMs(s);
-  const result = outcomeOf(s.case);
+  const result = outcomeOf(s.case, storyNow(s));
   const sent = s.case.actions.filter((a) => a.status === 'sent').length;
   return `
     <div class="body top-pad">
@@ -857,8 +855,8 @@ function outcome(s) {
       </div>
       <dl class="card facts">
         ${ms !== null ? `<div><dt>Your time on it</dt><dd>${inWords(ms)}</dd></div>` : ''}
-        ${result ? `<div><dt>Days on hold</dt><dd>${result.days}</dd></div><div><dt>Released on</dt><dd>${fmtDate(result.releasedOn, { year: true })}</dd></div>` : ''}
-        ${sent ? `<div><dt>Follow-ups sent with your OK</dt><dd>${sent}</dd></div>` : ''}
+        ${result ? `<div><dt>Days on hold</dt><dd>${result.days}</dd></div><div><dt>Released on</dt><dd>${fmtDate(result.releasedOn, { year: true })}</dd></div><div><dt>How it ended</dt><dd>${result.lapsed ? 'Lapsed on Day 90' : 'Released by the officer'}</dd></div>` : ''}
+        ${sent ? `<div><dt>Sent by Tracer with your OK</dt><dd>${sent}</dd></div>` : ''}
         <div><dt>Lost earlier this year</dt><dd>${LEDGER.lost} on ${LEDGER.lostHolds} holds</dd></div>
       </dl>
     </div>

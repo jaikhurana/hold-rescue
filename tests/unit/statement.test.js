@@ -100,10 +100,6 @@ test('agent fallbacks match the brief word for word when the chat is in the file
     scriptedAgentDraft('escalation', 'en', { kind: 'chat' }),
     'I request a review of the hold of ₹1,800 on order KK-2417. My grievance was filed on the national grievance portal on 6 Oct 2026, and no decision has been shared within 15 days. The order was paid for, delivered with OTP confirmation and is covered by our published exchange policy [E1][E3][E4]. The complaint arose from a disagreement about a ₹120 return courier charge [E5]. I request that the hold be reviewed and released.',
   );
-  assert.equal(
-    scriptedAgentDraft('release_request', 'en', null),
-    'The hold of ₹1,800 on order KK-2417 was placed on 5 Oct 2026. Ninety days have now passed, and I have not been told of any direction to continue it. I request that the hold be lifted and the amount added to my next settlement. My grievance and evidence are on file under reference GRM/2026/LKO/58213 [E1][E3].',
-  );
 });
 
 test('agent fallbacks never claim proof that is not in the file', () => {
@@ -114,7 +110,7 @@ test('agent fallbacks never claim proof that is not in the file', () => {
   const tagged = scriptedAgentDraft('officer_reply', 'en', { kind: 'tag', tag: 'Delivery proof' });
   assert.match(tagged, /I have also attached a screenshot from my phone \[E5\]\./);
   assert.ok(!scriptedAgentDraft('call_brief', 'en', null).includes('[E5]'));
-  for (const kind of ['officer_reply', 'escalation', 'release_request', 'call_brief']) {
+  for (const kind of ['officer_reply', 'escalation', 'call_brief']) {
     assert.match(scriptedAgentDraft(kind, 'hi', { kind: 'chat' }), /[ऀ-ॿ]/, `${kind} has a Hindi version`);
   }
 });

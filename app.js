@@ -148,7 +148,7 @@ let readTimer = 0;
 function openSheet(kind = 'evidence') {
   sheetReturnFocus = document.activeElement;
   s.sheet = { kind };
-  sheetRoot.innerHTML = sheetFrame(kind === 'agent' ? 'What the agent can do' : 'Add from your phone');
+  sheetRoot.innerHTML = sheetFrame(kind === 'agent' ? 'What Tracer can do' : 'Add from your phone');
   sheetRoot.classList.add('open');
   currentScreen().inert = true;
   if (kind === 'agent') $('#sheet-body').innerHTML = agentSheetBody();
@@ -371,7 +371,10 @@ function advance() {
   prepareAgentDrafts();
 
   let push = step.push ?? null;
-  if (view.released) push = { title: 'Hold lifted: ₹1,800 is yours', body: `It will be added to your settlement on ${fmtDate(addDays(step.on, 1))}.`, open: 'outcome' };
+  if (view.released) {
+    const lapsed = view.deadlines.lapsed ? 'Day 90 passed with no order to continue it, so the hold lapsed. ' : '';
+    push = { title: 'Hold lifted: ₹1,800 is yours', body: `${lapsed}It will be added to your settlement on ${fmtDate(addDays(view.deadlines.releasedOn, 1))}.`, open: 'outcome' };
+  }
   else if (added.length) {
     const also = reminders.length ? ` Also still waiting: ${AGENT_COPY[reminders[0].type].title.toLowerCase()}.` : '';
     push = { ...AGENT_COPY[added[0].type].push, open: 'tracker' };
@@ -479,7 +482,7 @@ function approveProposal(id) {
     s.case = withAction(s.case, p, 'acknowledged', now);
     s.agentFocus = null;
     refresh();
-    toast('Good luck with the call. Your agent will remind you 30 minutes before.');
+    toast('Good luck with the call. Tracer will remind you 30 minutes before.');
     return;
   }
   s.agentSending = id;
@@ -545,7 +548,7 @@ function syncAi() {
     text = 'Scripted: instant and the same every time. Best for recording.';
   } else if (s.health.ai === true) {
     state = 'live';
-    text = `Live: ${s.health.model}, an open model running on Groq, drafts the statement and the agent's messages. Free, no login.`;
+    text = `Live: ${s.health.model}, an open model running on Groq, drafts the statement and Tracer's messages. Free, no login.`;
   } else if (s.health.ai === false) {
     state = 'missing';
     text = "Open model not connected yet: add GROQ_API_KEY under Vercel's Environment Variables, then redeploy. Until then, drafts use the scripted text.";
@@ -727,7 +730,7 @@ const actions = {
     s.case = withAction(s.case, p, 'snoozed', storyNow(s));
     s.agentFocus = null;
     refresh();
-    toast('Kept for later. Your agent will remind you at the next update.');
+    toast('Kept for later. Tracer will remind you at the next update.');
   },
   'agent-review'(id) {
     s.agentFocus = id;

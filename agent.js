@@ -5,7 +5,8 @@
 // AI decides only WHAT to say (api/draft.js). The merchant decides WHETHER anything is sent.
 //
 // A case is { holdOn, submittedOn, events, actions }, all dates ISO (YYYY-MM-DD):
-//   events  — what happened outside the app: filed · officer_request · call_booked (callOn, callTime) · released
+//   events  — what happened outside the app: filed · officer_request · call_booked (callOn, callTime) · released ·
+//             extended (police got a legal order to continue the hold)
 //   actions — the merchant's choices, append-only, in order: sent · acknowledged · snoozed · reminded
 import { AGENT_COPY, AGENT_FACTS } from './case-data.js';
 
@@ -63,6 +64,13 @@ export function deadlines(c, now) {
   const events = happened(c, now);
   const filedOn = firstEvent(events, 'filed')?.on ?? null;
   const escalatedOn = sentAction(c, 'escalation', now)?.on ?? null;
+  const day90 = addDays(c.holdOn, 90);
+  const extendedOn = firstEvent(events, 'extended')?.on ?? null;
+  // The 90-day rule: a contested hold (the merchant responded) lapses on Day 90 unless police got a
+  // legal order to extend it. The platform holds the money, so it releases it then; nobody has to ask.
+  const lapseOn = c.submittedOn && !extendedOn && day90 <= now ? day90 : null;
+  const eventOn = firstEvent(events, 'released')?.on ?? null;
+  const releasedOn = [eventOn, lapseOn].filter(Boolean).sort()[0] ?? null;
   return {
     fileBy: c.submittedOn ? addDays(c.submittedOn, 7) : null, // the platform files within 7 days
     filedOn,
@@ -70,8 +78,10 @@ export function deadlines(c, now) {
     escalatedOn,
     dgoDueOn: escalatedOn ? addDays(escalatedOn, 15) : null, // then the District Grievance Officer, 15 more
     day75: addDays(c.holdOn, 75),
-    day90: addDays(c.holdOn, 90), // a contested hold lapses unless police get an order to extend it
-    releasedOn: firstEvent(events, 'released')?.on ?? null,
+    day90,
+    extendedOn,
+    releasedOn,
+    lapsed: Boolean(lapseOn) && releasedOn === lapseOn && !(eventOn && eventOn <= lapseOn),
   };
 }
 
@@ -93,9 +103,6 @@ function triggered(c, now, d) {
     if (on <= now && before(on)) {
       out.push({ id: 'escalation', type: 'escalation', on, dueBy: on, why: `The officer's 15 days ended on ${fmtDate(d.officerDueOn)} with no decision.` });
     }
-  }
-  if (d.day90 <= now && before(d.day90)) {
-    out.push({ id: 'release_request', type: 'release_request', on: d.day90, dueBy: addDays(d.day90, 1), why: `Day 90 was ${fmtDate(d.day90)}, and there is no order to continue the hold.` });
   }
   return out;
 }
@@ -133,7 +140,7 @@ function watchList(c, now, d) {
   const call = firstEvent(happened(c, now), 'call_booked');
   if (call && call.callOn >= now) items.push({ label: 'Video call', on: call.callOn, time: call.callTime });
   if (d.day75 >= now) items.push({ label: 'Day 75 check', on: d.day75 });
-  if (d.day90 >= now) items.push({ label: 'Day 90', on: d.day90 });
+  if (d.day90 >= now && !d.extendedOn) items.push({ label: 'Day 90', on: d.day90 });
   return items.sort((a, b) => a.on.localeCompare(b.on));
 }
 
@@ -144,7 +151,7 @@ function notices(c, now, d) {
     out.push({ id: 'dgo-due', on: d.dgoDueOn, text: `Still waiting. Watching Day 75 (${fmtDate(d.day75)}) and Day 90 (${fmtDate(d.day90)}).` });
   }
   if (c.submittedOn && d.day75 <= now && !(d.releasedOn && d.releasedOn <= d.day75)) {
-    out.push({ id: 'day75', on: d.day75, text: `Day 75 check: still on hold. Day 90 is ${fmtDate(d.day90)}.` });
+    out.push({ id: 'day75', on: d.day75, text: `Day 75 check: still on hold. If nothing changes, it lapses on Day 90 (${fmtDate(d.day90)}).` });
   }
   return out;
 }
@@ -167,6 +174,11 @@ export function activity(c, now) {
     if (e.type === 'officer_request') add(e.on, 0, 'officer', 'The officer asked for proof of delivery and the customer’s messages');
     if (e.type === 'call_booked') add(e.on, 0, 'officer', `Video call booked for ${fmtDate(e.callOn)}, ${e.callTime}`);
     if (e.type === 'released') add(e.on, 0, 'officer', `Hold lifted. ₹1,800 goes back into your settlement on ${fmtDate(addDays(e.on, 1))}`);
+    if (e.type === 'extended') add(e.on, 0, 'officer', 'Police got a legal order to continue the hold');
+  }
+  if (d.lapsed) {
+    add(d.releasedOn, 0, 'system', 'Day 90: no order to continue the hold, so it lapsed and ₹1,800 was released');
+    add(d.releasedOn, 1, 'agent', `Confirmed the release and told you. ₹1,800 goes into your settlement on ${fmtDate(addDays(d.releasedOn, 1))}`);
   }
   for (const p of triggered(c, now, d)) add(p.on, 1, 'agent', AGENT_COPY[p.type].drafted);
   for (const n of notices(c, now, d)) add(n.on, 1, 'agent', n.text);
@@ -177,7 +189,7 @@ export function activity(c, now) {
       add(a.on, 2, 'system', `Sent to ${copy.sentTo}${copy.via ? ` ${copy.via}` : ''}`);
     }
     if (a.status === 'acknowledged') add(a.on, 2, 'you', 'You read the call brief');
-    if (a.status === 'snoozed') add(a.on, 2, 'you', 'You chose “Not now”. The agent will remind you at the next update');
+    if (a.status === 'snoozed') add(a.on, 2, 'you', 'You chose “Not now”. Tracer will remind you at the next update');
     if (a.status === 'reminded') add(a.on, 1, 'agent', `Reminded you: ${copy.ready.toLowerCase()}`);
   }
   return rows.sort((a, b) => b.on.localeCompare(a.on) || b.rank - a.rank || b.seq - a.seq);
@@ -237,13 +249,13 @@ export function timeline(c, now, sentIn) {
   } else if (d.escalatedOn && now < d.dgoDueOn) {
     items.push({ title: 'District Grievance Officer', state: 'now', when: `By ${fmtDate(d.dgoDueOn)}`, text: `Your request for review was sent on ${fmtDate(d.escalatedOn)}.` });
   } else if (d.escalatedOn) {
-    items.push({ title: 'District Grievance Officer', state: 'missed', when: `No direction by ${fmtDate(d.dgoDueOn)}`, text: 'Your agent kept watching Day 75 and Day 90.' });
+    items.push({ title: 'District Grievance Officer', state: 'missed', when: `No direction by ${fmtDate(d.dgoDueOn)}`, text: 'Tracer kept watching Day 75 and Day 90.' });
   } else {
     items.push({
       title: 'If no decision: District Grievance Officer',
       state: 'next',
       when: d.officerDueOn ? `By ${fmtDate(addDays(d.officerDueOn, 16))}` : '15 days later',
-      text: 'Your agent drafts the request for review for you.',
+      text: 'Tracer drafts the request for review for you.',
     });
   }
 
@@ -253,16 +265,14 @@ export function timeline(c, now, sentIn) {
   } else {
     const checked = now >= d.day75;
     items.push({ title: 'Day 75 check', state: checked ? 'done' : 'next', when: fmtDate(d.day75), text: checked ? 'Checked: still on hold.' : 'We remind you and confirm the status.' });
-    const release = sentAction(c, 'release_request', now);
-    if (now >= d.day90) {
-      items.push({
-        title: 'Day 90: the hold must end',
-        state: release ? 'done' : 'now',
-        when: fmtDate(d.day90),
-        text: release ? `You asked for the hold to be lifted on ${fmtDate(release.on)}.` : 'Your release request is ready.',
-      });
+    if (d.lapsed) {
+      items.push({ title: 'Day 90: the hold ends', state: 'done', when: fmtDate(d.day90), text: 'No order to continue it, so the hold lapsed and ₹1,800 was released.' });
+    } else if (d.releasedOn) {
+      items.push({ title: 'Day 90: the hold must end', state: 'faded', when: fmtDate(d.day90), text: '' });
+    } else if (d.extendedOn) {
+      items.push({ title: 'Day 90: the hold must end', state: 'missed', when: fmtDate(d.day90), text: 'Police got a legal order to continue the hold.' });
     } else {
-      items.push({ title: 'Day 90: the hold must end', state: 'next', when: fmtDate(d.day90), text: 'A contested hold lapses unless police get a legal order to extend it.' });
+      items.push({ title: 'Day 90: the hold must end', state: 'next', when: fmtDate(d.day90), text: 'A contested hold lapses unless police get a legal order to extend it. Tracer tells you the moment it does.' });
     }
     if (d.releasedOn) {
       items.push({ title: 'Hold lifted', state: 'done', when: fmtDate(d.releasedOn), text: `₹1,800 goes back into your settlement on ${fmtDate(addDays(d.releasedOn, 1))}.` });
@@ -271,8 +281,8 @@ export function timeline(c, now, sentIn) {
   return items;
 }
 
-/** The result once the hold is lifted: { releasedOn, creditedOn, days }, or null. */
-export function outcome(c) {
-  const releasedOn = firstEvent(c.events, 'released')?.on;
-  return releasedOn ? { releasedOn, creditedOn: addDays(releasedOn, 1), days: daysBetween(c.holdOn, releasedOn) } : null;
+/** The result once the hold is lifted: { releasedOn, creditedOn, days, lapsed }, or null. */
+export function outcome(c, now) {
+  const { releasedOn, lapsed } = deadlines(c, now);
+  return releasedOn ? { releasedOn, creditedOn: addDays(releasedOn, 1), days: daysBetween(c.holdOn, releasedOn), lapsed } : null;
 }

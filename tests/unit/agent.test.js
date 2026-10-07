@@ -67,7 +67,7 @@ test('Responds: reply on Fri 9 Oct, call brief on Mon 12 Oct, released Fri 16 Oc
   assert.deepEqual(steps.map((s) => s.proposals), [[], [], ['officer_reply'], ['call_brief'], []]);
   assert.deepEqual(steps[1].watch.map((w) => `${w.label} ${fmtDate(w.on)}`), ["Officer's decision due Wed 21 Oct", 'Day 75 check Sat 19 Dec', 'Day 90 Sun 3 Jan 2027']);
   assert.deepEqual(steps[4].watch, []);
-  assert.deepEqual(outcome(c), { releasedOn: '2026-10-16', creditedOn: '2026-10-17', days: 11 });
+  assert.deepEqual(outcome(c, '2026-10-16'), { releasedOn: '2026-10-16', creditedOn: '2026-10-17', days: 11, lapsed: false });
 });
 
 test('the officer reply proposal explains why and is due within a day', () => {
@@ -80,13 +80,38 @@ test('the officer reply proposal explains why and is due within a day', () => {
 
 // ───────────── Scenario: the officer goes quiet ─────────────
 
-test('Goes quiet: escalation Thu 22 Oct, watching on Fri 6 Nov, release request Sun 3 Jan 2027, released Tue 5 Jan 2027 after 92 days', () => {
+test('Goes quiet: escalation Thu 22 Oct, watching on Fri 6 Nov, and the hold lapses on Day 90 (Sun 3 Jan 2027) with no request needed', () => {
   const { c, steps } = walk('quiet', approveAll);
-  assert.deepEqual(steps.map((s) => s.on), ['2026-10-05', '2026-10-06', '2026-10-22', '2026-11-06', '2027-01-03', '2027-01-05']);
-  assert.deepEqual(steps.map((s) => s.proposals), [[], [], ['escalation'], [], ['release_request'], []]);
+  assert.deepEqual(steps.map((s) => s.on), ['2026-10-05', '2026-10-06', '2026-10-22', '2026-11-06', '2027-01-03']);
+  assert.deepEqual(steps.map((s) => s.proposals), [[], [], ['escalation'], [], []]);
   assert.deepEqual(steps[3].notices, ['dgo-due']);
   assert.deepEqual(steps[3].watch.map((w) => w.label), ['Day 75 check', 'Day 90']);
-  assert.deepEqual(outcome(c), { releasedOn: '2027-01-05', creditedOn: '2027-01-06', days: 92 });
+  assert.deepEqual(steps[4].watch, []);
+  assert.deepEqual(outcome(c, '2027-01-03'), { releasedOn: '2027-01-03', creditedOn: '2027-01-04', days: 90, lapsed: true });
+});
+
+test('the 90-day rule: only a contested hold lapses, and an order to extend it stops the lapse', () => {
+  const contested = withEvents(submitted(), SCENARIOS.quiet[1]);
+  assert.equal(evaluate(contested, '2027-01-02').released, false, 'not before Day 90');
+  const day90 = evaluate(contested, '2027-01-03');
+  assert.equal(day90.released, true);
+  assert.equal(day90.deadlines.lapsed, true);
+  assert.deepEqual(day90.proposals, [], 'nothing for the merchant to do');
+
+  const unanswered = withEvents(newCase(), SCENARIOS.quiet[1]);
+  assert.equal(evaluate(unanswered, '2027-01-03').released, false, 'an unanswered hold is not contested, so it does not lapse');
+
+  const extended = withEvents(contested, { on: '2026-12-20', events: [{ type: 'extended' }] });
+  const r = evaluate(extended, '2027-01-03');
+  assert.equal(r.released, false);
+  assert.ok(!r.watch.some((w) => w.label === 'Day 90'));
+  assert.equal(timeline(extended, '2027-01-03', null).at(-1).text, 'Police got a legal order to continue the hold.');
+});
+
+test('an officer release before Day 90 is not a lapse', () => {
+  const { c } = walk('responds', approveAll);
+  assert.equal(evaluate(c, '2027-02-01').deadlines.lapsed, false);
+  assert.equal(outcome(c, '2027-02-01').releasedOn, '2026-10-16');
 });
 
 test('the escalation explains the missed deadline, and approving it sets the District Grievance Officer date', () => {
@@ -109,9 +134,12 @@ test('on Fri 6 Nov the agent only notes that it is still watching', () => {
   assert.equal(r.notices[0].text, 'Still waiting. Watching Day 75 (Sat 19 Dec) and Day 90 (Sun 3 Jan 2027).');
 });
 
-test('the release request is proposed on Day 90 even if the escalation was never sent', () => {
+test('the hold still lapses on Day 90 even if the escalation was never sent', () => {
   const c = withEvents(submitted(), SCENARIOS.quiet[1]);
-  assert.deepEqual(types(evaluate(c, '2027-01-03')), ['escalation', 'release_request']);
+  assert.deepEqual(types(evaluate(c, '2027-01-02')), ['escalation']);
+  const r = evaluate(c, '2027-01-03');
+  assert.equal(r.deadlines.lapsed, true);
+  assert.deepEqual(r.proposals, [], 'once the hold is lifted, the waiting escalation is dropped');
 });
 
 // ───────────── Proposals: no duplicates, approve, Not now ─────────────
@@ -174,14 +202,15 @@ test('the engine is pure: it never changes the case it is given', () => {
 
 test('the activity log records each step, newest first', () => {
   const { c } = walk('quiet', approveAll);
-  const rows = activity(c, '2027-01-05');
-  assert.equal(rows[0].on, '2027-01-05');
-  assert.match(rows[0].text, /^Hold lifted/);
+  const rows = activity(c, '2027-01-03');
+  assert.equal(rows[0].on, '2027-01-03');
   const lines = rows.map((r) => `${r.on} ${r.actor}: ${r.text}`);
   assert.ok(lines.includes('2026-10-22 system: Sent to the District Grievance Officer via the grievance portal'));
   assert.ok(lines.includes('2026-10-22 you: You approved the request for review'));
   assert.ok(lines.includes('2026-11-06 agent: Still waiting. Watching Day 75 (Sat 19 Dec) and Day 90 (Sun 3 Jan 2027).'));
-  assert.ok(lines.includes('2027-01-03 system: Sent to our grievance desk, copied to the officer'));
+  assert.ok(lines.includes('2026-12-19 agent: Day 75 check: still on hold. If nothing changes, it lapses on Day 90 (Sun 3 Jan 2027).'));
+  assert.ok(lines.includes('2027-01-03 system: Day 90: no order to continue the hold, so it lapsed and ₹1,800 was released'));
+  assert.ok(lines.includes('2027-01-03 agent: Confirmed the release and told you. ₹1,800 goes into your settlement on Mon 4 Jan 2027'));
   const sent = lines.indexOf('2026-10-22 system: Sent to the District Grievance Officer via the grievance portal');
   const approved = lines.indexOf('2026-10-22 you: You approved the request for review');
   const drafted = lines.indexOf('2026-10-22 agent: Drafted a request for review by the District Grievance Officer');
@@ -205,6 +234,8 @@ test('timeline states follow the quiet path', () => {
   const states = (now) => timeline(c, now, null).map((i) => i.state).join(' ');
   assert.equal(states('2026-10-22'), 'done done done missed now next next');
   assert.equal(states('2026-11-06'), 'done done done missed missed next next');
+  assert.equal(states('2027-01-03'), 'done done done missed missed done done done');
+  assert.equal(timeline(c, '2027-01-03', null)[6].title, 'Day 90: the hold ends');
   const items = timeline(c, '2026-11-06', null);
   assert.equal(items[3].when, 'No decision by Wed 21 Oct');
   assert.equal(items[4].when, 'No direction by Fri 6 Nov');

@@ -202,7 +202,7 @@ export const SCRIPTED = {
 
 // ───────────── Follow-up agent ─────────────
 
-// Fixed facts about what happens after the merchant submits. The server builds the agent's
+// Fixed facts about what happens after the merchant submits. The server builds Tracer's
 // prompts from these; the browser never sends any of them. Dates are ISO (YYYY-MM-DD).
 export const AGENT_FACTS = {
   holdOn: '2026-10-05',
@@ -232,13 +232,13 @@ export const SCENARIOS = {
     { on: '2026-10-05' },
     { on: '2026-10-06', events: [{ type: 'filed' }], push: FILED_PUSH },
     { on: '2026-10-22' },
-    { on: '2026-11-06', push: { title: 'Still waiting on KK-2417', body: 'No direction yet. Your agent is watching Day 75 and Day 90.', open: 'tracker' } },
+    { on: '2026-11-06', push: { title: 'Still waiting on KK-2417', body: 'No direction yet. If nothing changes, the hold lapses on Day 90 (Sun 3 Jan 2027). Tracer is watching.', open: 'tracker' } },
+    // Day 90: no event needed. The rules in agent.js lapse a contested hold on this date.
     { on: '2027-01-03' },
-    { on: '2027-01-05', events: [{ type: 'released' }] },
   ],
 };
 
-// How each kind of agent work is named across the app.
+// How each kind of work by Tracer, the follow-up agent, is named across the app.
 export const AGENT_COPY = {
   officer_reply: {
     title: 'Reply to the officer',
@@ -265,15 +265,6 @@ export const AGENT_COPY = {
     via: 'via the grievance portal',
     push: { title: 'No decision in 15 days', body: 'Your request for review is ready.' },
   },
-  release_request: {
-    title: 'Release request',
-    ready: 'Your release request is ready',
-    badge: 'Release request ready',
-    drafted: 'Drafted a request to lift the hold under the 90-day limit',
-    sentTo: 'our grievance desk, copied to the officer',
-    via: '',
-    push: { title: 'Day 90 reached', body: 'Your release request is ready.' },
-  },
 };
 
 // Letter headings for the agent's messages. The call brief is for the merchant only.
@@ -285,10 +276,6 @@ export const AGENT_LETTERS = {
   escalation: {
     en: { to: 'To the District Grievance Officer', re: 'Re: grievance GRM/2026/LKO/58213 · hold of ₹1,800 on order KK-2417' },
     hi: { to: 'सेवा में, ज़िला शिकायत निवारण अधिकारी', re: 'विषय: अनुरोध GRM/2026/LKO/58213 · ऑर्डर KK-2417 पर ₹1,800 की रोक' },
-  },
-  release_request: {
-    en: { to: 'To: Grievance desk · Cc: Investigating Officer, Cyber Crime PS, Lucknow', re: 'Re: hold of ₹1,800 on order KK-2417 · 90-day limit' },
-    hi: { to: 'सेवा में: शिकायत निवारण डेस्क · प्रतिलिपि: जाँच अधिकारी, साइबर क्राइम थाना, लखनऊ', re: 'विषय: ऑर्डर KK-2417 पर ₹1,800 की रोक · 90 दिन की सीमा' },
   },
 };
 
@@ -308,7 +295,7 @@ export const CALL_BRIEF = {
   },
 };
 
-// Scripted fallbacks for the agent, used when AI is off or fails. Conditions, as for the statement:
+// Scripted fallbacks for Tracer's messages, used when AI is off or fails. Conditions, as for the statement:
 //   'all' · 'chat' (E5 is the sample chat) · 'nochat' · 'attach' (E5 is a tagged upload)
 //   'messages' (E5 shows the exchange request) · 'nomessages'
 // The Hindi versions are faithful translations of the English; IDs, ₹ amounts and tags are unchanged.
@@ -355,20 +342,6 @@ export const AGENT_SCRIPTED = {
       ['all', 'मेरा अनुरोध है कि रोक की समीक्षा करके इसे हटाया जाए।'],
     ],
   },
-  release_request: {
-    en: [
-      ['all', 'The hold of ₹1,800 on order KK-2417 was placed on 5 Oct 2026.'],
-      ['all', 'Ninety days have now passed, and I have not been told of any direction to continue it.'],
-      ['all', 'I request that the hold be lifted and the amount added to my next settlement.'],
-      ['all', 'My grievance and evidence are on file under reference GRM/2026/LKO/58213 [E1][E3].'],
-    ],
-    hi: [
-      ['all', 'ऑर्डर KK-2417 पर ₹1,800 की रोक 5 अक्टूबर 2026 को लगाई गई थी।'],
-      ['all', 'अब नब्बे दिन बीत चुके हैं, और मुझे इसे जारी रखने के किसी निर्देश की जानकारी नहीं दी गई है।'],
-      ['all', 'मेरा अनुरोध है कि रोक हटाई जाए और राशि मेरे अगले सेटलमेंट में जोड़ी जाए।'],
-      ['all', 'मेरा अनुरोध और प्रमाण संदर्भ GRM/2026/LKO/58213 के तहत दर्ज हैं [E1][E3]।'],
-    ],
-  },
   // Call brief answers, in the "A1 / A2 / A3 / TIP" shape the AI also uses.
   call_brief: {
     en: {
@@ -386,10 +359,9 @@ export const AGENT_SCRIPTED = {
   },
 };
 
-// The proof each agent message may cite, from its sentence plan. Any other tag the model writes is dropped.
+// The proof each of Tracer's messages may cite, from its sentence plan. Any other tag the model writes is dropped.
 export const AGENT_TAGS = {
   officer_reply: ['E3', 'E4', 'E5'],
   escalation: ['E1', 'E3', 'E4', 'E5'],
-  release_request: ['E1', 'E3'],
   call_brief: ['E1', 'E2', 'E3', 'E4', 'E5'],
 };

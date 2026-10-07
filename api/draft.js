@@ -1,4 +1,4 @@
-// POST /api/draft: drafts the merchant's statement, or one of the follow-up agent's messages,
+// POST /api/draft: drafts the merchant's statement, or one of Tracer's (the follow-up agent's) messages,
 // with an open model on Groq and streams it back.
 //
 // This is a public URL on a free quota, so it can only ever draft these few fixed texts:
@@ -20,7 +20,7 @@ const REDRAFT_WINDOW_MS = 60_000;
 const REDRAFTS_PER_VISITOR = 6;
 const REDRAFTS_PER_INSTANCE = 30; // Groq's free tier allows 30 requests a minute
 
-export const KINDS = ['statement', 'officer_reply', 'escalation', 'release_request', 'call_brief'];
+export const KINDS = ['statement', 'officer_reply', 'escalation', 'call_brief'];
 
 const SYSTEM_PROMPT =
   'You draft short, factual statements and messages for small online merchants in India whose payment is on hold after it was reported on the national cyber-crime portal. ' +
@@ -230,7 +230,6 @@ function caseFacts(kind) {
   const lines = [`Grievance: filed on the national grievance portal on ${filed}, reference ${AGENT_FACTS.grievanceRef}.`];
   if (kind === 'officer_reply') lines.push(`Officer's request: “${AGENT_FACTS.officerRequest}”`);
   if (kind === 'escalation') lines.push(`The investigating officer had 15 days, until ${fmtDate(addDays(AGENT_FACTS.filedOn, 15), { year: true })}, and has shared no decision.`);
-  if (kind === 'release_request') lines.push(`Day 90 after the hold was ${fmtDate(addDays(AGENT_FACTS.holdOn, 90), { year: true })}. The merchant has not been told of any direction to continue the hold.`);
   if (kind === 'call_brief') lines.push(`Video call with the investigating officer: ${fmtDate(AGENT_FACTS.callOn, { year: true })}, ${AGENT_FACTS.callTime}.`);
   return lines;
 }
@@ -238,7 +237,6 @@ function caseFacts(kind) {
 const AGENT_TASKS = {
   officer_reply: { task: `draft the merchant’s reply to the investigating officer, who asked: “${AGENT_FACTS.officerRequest}”`, words: '70 to 110' },
   escalation: { task: 'draft the merchant’s request to the District Grievance Officer to review the hold, because the investigating officer shared no decision within 15 days', words: '70 to 110' },
-  release_request: { task: 'draft the merchant’s request to the grievance desk, copied to the investigating officer, to lift the hold under the 90-day limit', words: '50 to 90' },
 };
 
 /**
@@ -262,21 +260,13 @@ function agentPlan(kind, e5) {
       'I am happy to join a video call at your convenience, and I request that the hold of ₹1,800 be released. (no tag)',
     ];
   }
-  if (kind === 'escalation') {
-    return [
-      'I request a review of the hold of ₹1,800 on order KK-2417. (no tag)',
-      'My grievance was filed on the national grievance portal on 6 Oct 2026, and no decision has been shared within 15 days. (no tag)',
-      'The order was paid for, delivered with OTP confirmation and is covered by our published exchange policy. [E1][E3][E4]',
-      ...(chat ? ['The complaint arose from a disagreement about the ₹120 return courier charge. [E5]'] : []),
-      ...(attached ? ['A screenshot from my phone is attached. [E5]'] : []),
-      'I request that the hold be reviewed and released. (no tag)',
-    ];
-  }
   return [
-    'At the request of Cyber Crime PS, Lucknow, ₹1,800 on order KK-2417 has been on hold since 5 Oct 2026. (no tag)',
-    'Ninety days have now passed, and I have not been told of any direction to continue the hold. (no tag)',
-    'I request that the hold be lifted and the amount added to my next settlement. (no tag)',
-    'My grievance and evidence are on file under reference GRM/2026/LKO/58213. [E1][E3]',
+    'I request a review of the hold of ₹1,800 on order KK-2417. (no tag)',
+    'My grievance was filed on the national grievance portal on 6 Oct 2026, and no decision has been shared within 15 days. (no tag)',
+    'The order was paid for, delivered with OTP confirmation and is covered by our published exchange policy. [E1][E3][E4]',
+    ...(chat ? ['The complaint arose from a disagreement about the ₹120 return courier charge. [E5]'] : []),
+    ...(attached ? ['A screenshot from my phone is attached. [E5]'] : []),
+    'I request that the hold be reviewed and released. (no tag)',
   ];
 }
 
