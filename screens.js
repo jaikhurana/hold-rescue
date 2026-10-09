@@ -90,7 +90,7 @@ function lock() {
           <span class="notif-text">
             <span class="notif-meta"><b>Payments</b><span>now</span></span>
             <strong>${HOLD.amount} on hold: a cyber-fraud report names this payment</strong>
-            <span>Order ${HOLD.order}. Respond by ${HOLD.respondBy} to get it back. Takes about 2 minutes.</span>
+            <span>Order ${HOLD.order}. Respond by ${HOLD.respondBy} to contest it. Takes about 2 minutes.</span>
           </span>
         </button>
         <div class="notif dim">

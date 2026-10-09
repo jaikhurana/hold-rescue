@@ -250,6 +250,15 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
 - **How it was verified:** `npm test` → 66/66, including new tests that only a contested hold lapses, that an extension order stops the lapse, that an officer's release before Day 90 is not a lapse, and that a waiting escalation is dropped once the hold lapses. `npm run test:e2e` → 24/24. The quiet path ends with the lapse and nothing to approve, and the phone's text has no "concept", "fictional" or "prototype". Checked in the in-app browser.
 - **Real versus simulated:** The Day 90 lapse is a real rule in the engine; the money movement is simulated.
 
+## M5f · Sharper pitch, no promised outcomes
+
+- **When / goal:** 9 Oct 2026. Put Jai's new positioning line on the prototype's main page, and make sure nothing on the page is wrong.
+- **What I asked:** "Small merchants don't lose held money because they're wrong… Tracer chases it until the money is released." Apply it, and check nothing wrong is written.
+- **What Claude did:** Replaced the presenter rail's pitch and the page's link-preview description with: "Small merchants often lose held money without being in the wrong. Contesting a hold after a cyber-fraud report is unclear and slow, and nobody on a small team has time to chase it. Hold Rescue builds their response on their phone in under two minutes, and Tracer, a follow-up agent, chases it until the hold is resolved."
+- **Decisions and trade-offs:** Two edits to the draft line keep it true. "Until the money is released" became "until the hold is resolved", because police decide and can extend a hold; the product never promises an outcome. "Don't lose it because they're wrong" became "often lose it without being in the wrong", because some reports are real fraud. A scan of all visible copy found one more promise from the original brief, the lock-screen alert's "Respond by Mon 12 Oct to get it back", now "to contest it".
+- **How it was verified:** `npm test` → 66/66, `npm run test:e2e` → 24/24, and a search of the page's copy for promised outcomes ("get it back", "guarantee", "will be released", "money back") now finds none.
+- **Real versus simulated:** No change.
+
 ---
 
 ## AI in the product
