@@ -195,21 +195,6 @@ button:disabled { cursor: not-allowed; }
 .ai-card[data-state="missing"] .ai-dot { background: var(--due); }
 .ai-card[data-state="scripted"] .ai-dot { background: var(--primary); }
 
-.notes { margin-top: 16px; border-top: 1px solid var(--line); }
-.notes details { border-bottom: 1px solid var(--line); }
-.notes summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  font-weight: 600;
-  list-style: none;
-}
-.notes summary::-webkit-details-marker { display: none; }
-.notes summary::after { content: "+"; font: 400 20px/1 var(--font-text); color: var(--muted); }
-.notes details[open] summary::after { content: "−"; }
-.notes ul { padding: 0 0 14px 18px; display: grid; gap: 6px; color: var(--ink-2); font-size: 13.5px; }
 .fine { margin-top: 16px; font-size: 12px; line-height: 1.5; color: var(--muted); }
 
 /* ───────────── Phone frame ───────────── */
