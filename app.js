@@ -645,7 +645,7 @@ const actions = {
   'sheet-view': (view) => setSheetView(view),
   sample(which) {
     if (which === 'chat') setSheetView('reading');
-    else if (which === 'photo') toast('That photo shows the product, not the conversation. Pick the chat.');
+    else if (which === 'photo') toast('That photo shows the product, not what happened after delivery. Try the chat.');
     else toast('That shows the payment, which is already in your file as E1.');
   },
   'add-chat': () => addE5({ kind: 'chat' }),

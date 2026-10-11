@@ -88,7 +88,7 @@ export const EVIDENCE = [
   },
 ];
 
-// E5 is the one item the platform cannot know: the customer's chat, on the merchant's phone.
+// E5 is whatever the platform cannot know: any other proof on the merchant's phone. The demo's example is the customer's chat.
 export const E5_LABELS = ["Customer's exchange request", 'Delivery proof', 'Other proof'];
 
 export const E5_CHAT = {

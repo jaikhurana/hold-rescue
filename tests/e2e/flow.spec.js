@@ -36,7 +36,7 @@ test('happy path: from the lock-screen alert to the hold being lifted', async ({
   await expect(app(page).getByText('4 of 5 ready')).toBeVisible();
   await expectNoHorizontalScroll(page);
 
-  await app(page).getByRole('button', { name: "Add the customer's chat" }).click();
+  await app(page).getByRole('button', { name: 'Add other proof' }).click();
   await expect(app(page).getByRole('dialog', { name: 'Add from your phone' })).toBeVisible();
   await app(page).getByRole('button', { name: /Chat screenshot, 19 Sep/ }).click();
   await expect(app(page).getByText('What it shows')).toBeVisible();
@@ -112,7 +112,7 @@ test('fallback: when the AI is down the scripted draft appears and says so, in E
 test('a real image can be picked, tagged and added as E5', async ({ page }) => {
   await openHold(page);
   await app(page).getByRole('button', { name: /Build my response/ }).click();
-  await app(page).getByRole('button', { name: "Add the customer's chat" }).click();
+  await app(page).getByRole('button', { name: 'Add other proof' }).click();
   await page.setInputFiles('#file-input', { name: 'screenshot.png', mimeType: 'image/png', buffer: PNG_1PX });
   await expect(app(page).getByText('What does it show?')).toBeVisible();
   await app(page).getByRole('button', { name: 'Delivery proof' }).click();

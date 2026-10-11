@@ -267,6 +267,13 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
 - **How it was verified:** `npm test` → 66/66; `npm run test:e2e` → 24/24 (the tests already use this button to drive both scenarios); at 390×844 the button is visible without scrolling as soon as the tracker opens.
 - **Real versus simulated:** No change.
 
+## M5h · Any other proof, not only the exchange chat
+
+- **When / goal:** 11 Oct 2026. Jai pointed out that the case file asked specifically for a screenshot of the customer's exchange request, though holds have many causes and a merchant may have any kind of proof.
+- **What Claude did:** The empty fifth slot is now "Any other proof" ("Add anything else that shows what happened, for example your chat with the customer"), its button is "Add other proof", and presenter step 4 has the same name. The hint on the hold screen no longer assumes an exchange. Once the sample chat has been read, the item is still titled "Customer's exchange request", because that is what that chat shows.
+- **How it was verified:** `npm test` → 66/66; `npm run test:e2e` → 24/24 (the button's name updated in two tests); the case-file screen checked at phone width.
+- **Real versus simulated:** No change.
+
 ---
 
 ## AI in the product

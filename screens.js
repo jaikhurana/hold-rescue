@@ -284,7 +284,7 @@ function hold(s) {
         <p>For amounts under ₹50,000, police can return the money to the person who reported it, even without registering a case. <strong>That is how ${LEDGER.lost} went on two holds this year.</strong></p>
       </section>
       <div class="banner info">${icon('truck')}
-        <p><strong>Delivered with OTP on 18 Sep</strong> · No refund or return on record. If the customer asked for an exchange, that chat is your strongest proof.</p>
+        <p><strong>Delivered with OTP on 18 Sep</strong> · No refund or return on record. Any other proof you have, such as your chat with the customer, makes your response stronger.</p>
       </div>
       <dl class="card facts">
         <div><dt>Reported on</dt><dd>${HOLD.reportedOn}</dd></div>
@@ -342,12 +342,12 @@ function evidenceCard(item, i, animate, s) {
 
 function missingCard(animate) {
   return `
-    <article class="ev missing${animate ? ' stagger' : ''}" style="--i:4" aria-label="E5: missing">
+    <article class="ev missing${animate ? ' stagger' : ''}" style="--i:4" aria-label="E5: not added yet">
       <div class="ev-head">
         <span class="ev-id">E5</span>
-        <div class="ev-titles"><h3>Customer's exchange request</h3><p class="ev-src">Missing · probably on your phone</p></div>
+        <div class="ev-titles"><h3>Any other proof</h3><p class="ev-src">Not added yet · probably on your phone</p></div>
       </div>
-      <p class="ev-shown">Add the chat where the customer asked for an exchange. It shows the officer this is an exchange dispute, not fraud.</p>
+      <p class="ev-shown">Add anything else that shows what happened, for example your chat with the customer. It helps the officer see the full picture.</p>
       <button class="btn btn-secondary btn-sm ev-btn" type="button" data-action="sheet-open">${icon('phone', 18)}Add from phone</button>
     </article>`;
 }
@@ -378,7 +378,7 @@ function casefile(s) {
     <footer class="footer">
       ${e5
         ? '<button class="btn btn-primary btn-block" type="button" data-action="go" data-arg="statement">Draft my statement</button>'
-        : `<button class="btn btn-primary btn-block" type="button" data-action="sheet-open">Add the customer's chat</button>
+        : `<button class="btn btn-primary btn-block" type="button" data-action="sheet-open">Add other proof</button>
            <button class="btn btn-text btn-block" type="button" data-action="go" data-arg="statement">Continue without it</button>`}
     </footer>`;
 }

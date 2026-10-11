@@ -17,7 +17,7 @@ When a payment is reported as fraud on the national cyber-crime portal (1930 / c
 1. **Alert** arrives as a push notification.
 2. **Understand the hold**: what happened, the deadline, and what happens if you don't respond.
 3. **Case file builds itself** from data the payment platform already has: payment, order, OTP-confirmed delivery, published exchange policy.
-4. **Add the customer's chat** from the phone. It shows this is an exchange dispute, not fraud.
+4. **Add any other proof** from the phone, such as the chat with the customer. In the demo, the chat shows this is an exchange dispute, not fraud.
 5. **Statement drafted by AI**: an open model (gpt-oss-120b on Groq) writes it only from the case file and tags every sentence with its proof. English or हिंदी.
 6. **Review and submit** in one tap.
 7. **Tracer, the follow-up agent, chases it to release.** It watches every legal deadline, notices when something needs doing, prepares the work, and asks for one tap of approval:
