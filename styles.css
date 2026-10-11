@@ -1060,6 +1060,7 @@ button.notif:hover { background: hsl(0 0% 100% / .22); }
   text-transform: uppercase;
 }
 .demo-skip:hover { border-color: var(--primary); color: var(--primary-text); }
+.footer .demo-skip { width: 100%; min-height: 48px; border-color: var(--primary); color: var(--primary-text); background: var(--primary-soft); }
 
 /* ───────────── Follow-up agent ───────────── */
 .agent-card {

@@ -260,6 +260,13 @@ The brief the build started from is in [docs/brief.md](docs/brief.md). Each entr
 - **Then, the same day:** removed the rail's "Product decisions", "Left out on purpose" and "What we'd measure" sections. They repeated the one-page product note, made the page read like a generated demo, and two lines had gone stale: the "all three holds were exchange disputes" claim, now that the note covers two interviews and other reasons, and "v1 exports the case file", a feature the prototype doesn't have. The rail now holds only what a presenter uses (title, pitch, timer, steps, Restart/Advance, Officer and Theme switches, Drafting mode) plus the one affiliation line. Verified: 66/66 unit, 24/24 end-to-end, and the stylesheet's braces balance after removing the notes' styles.
 - **Real versus simulated:** No change.
 
+## M5g · The skip button, pinned
+
+- **When / goal:** 11 Oct 2026. Jai noticed that the tracker's "Demo · Skip ahead" button sat below the whole timeline and log, so a judge on a phone (where the presenter rail is hidden) could miss the only way to move the story on.
+- **What Claude did:** Moved the button out of the scrolling content into the tracker's pinned footer, full width, where every other screen has its main button. When the hold is lifted, "See the result" takes the same spot.
+- **How it was verified:** `npm test` → 66/66; `npm run test:e2e` → 24/24 (the tests already use this button to drive both scenarios); at 390×844 the button is visible without scrolling as soon as the tracker opens.
+- **Real versus simulated:** No change.
+
 ---
 
 ## AI in the product

@@ -832,11 +832,13 @@ function tracker(s) {
           </li>`).join('')}
       </ol>
       ${activityLog(s)}
-      ${next ? `<button class="demo-skip" type="button" data-action="advance">${icon('forward', 16)}Demo · Skip ahead to ${fmtDate(next.on)}</button>` : ''}
     </div>
     ${released
       ? '<footer class="footer"><button class="btn btn-primary btn-block" type="button" data-action="go" data-arg="outcome">See the result</button></footer>'
-      : ''}`;
+      : next
+        // Pinned to the bottom so nobody has to scroll past the timeline to move the story on.
+        ? `<footer class="footer"><button class="demo-skip" type="button" data-action="advance">${icon('forward', 16)}Demo · Skip ahead to ${fmtDate(next.on)}</button></footer>`
+        : ''}`;
 }
 
 // ───────────── 11. Outcome ─────────────
